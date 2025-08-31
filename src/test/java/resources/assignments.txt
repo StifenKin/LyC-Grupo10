@@ -1,0 +1,7 @@
+a := 999
+a := 99
+a := 999
+a := 9.99
+a := .999
+b := "@sdADaSjfla%dfg"
+b := "asldk  fh sjf"

@@ -1,9 +1,20 @@
 package lyc.compiler;
 
 import java_cup.runtime.*;
+import java.util.List;
+import java.util.ArrayList;
+import lyc.compiler.table.*;
+import java.util.HashMap;
 
 class Parser;
 
+action code {:
+    HashMap<String, SymbolEntry> symbolTable = SymbolTableManager.symbolTable;
+    List<String> idList = new ArrayList<>();
+    DataType dataType;
+:}
+
+// Terminals
 
 // Terminals
 terminal ASSIG;
@@ -11,29 +22,260 @@ terminal PLUS;
 terminal SUB;
 terminal MULT;
 terminal DIV;
+terminal REST;
+terminal MAYOR;
+terminal LOWER;
+terminal MAYOR_I;
+terminal LOWER_I;
+terminal EQUAL;
+terminal NOT_EQUAL;
+terminal AND_COND;
+terminal OR_COND;
+terminal NOT_COND;
 terminal OPEN_BRACKET;
 terminal CLOSE_BRACKET;
+terminal OPEN_CURLY_BRACKET;
+terminal CLOSE_CURLY_BRACKET;
+terminal OPEN_SQUARE_BRACKET;
+terminal CLOSE_SQUARE_BRACKET;
+terminal COMMA;
+terminal SEMI_COLON;
+terminal DOT;
+terminal DOUBLE_DOT;
 terminal INTEGER_CONSTANT;
-terminal IDENTIFIER;
+terminal FLOAT_CONSTANT;
+terminal STRING_CONSTANT;
+terminal BOOLEAN_CONSTANT;
+terminal INT;
+terminal FLOAT;
+terminal STRING;
+terminal IF;
+terminal ELSE;
+terminal WHILE;
+terminal WRITE;
+terminal READ;
+terminal String IDENTIFIER;
+terminal INIT;
+terminal ISZERO;
+terminal CONVDATE;
+
 
 // Non Terminals
+non terminal program;
+non terminal block;
 non terminal sentence;
+non terminal var_declaration;
+non terminal var_sencente_dec;
+non terminal data_type;
+non terminal id_list;
+non terminal decision;
+non terminal condition;
+non terminal comparison;
+non terminal comparator;
+non terminal iterator;
 non terminal assignment;
+non terminal s_write;
+non terminal s_read;
+non terminal write_param;
+non terminal read_param;
 non terminal expression;
 non terminal term;
 non terminal factor;
+non terminal is_zero;
+non terminal conv_date;
+non terminal c_list;
+non terminal list;
 
 // Start Symbol Definition
-start with sentence;
+start with program;
 
-sentence ::= assignment {: System.out.println("End"); :};
-assignment ::= IDENTIFIER ASSIG expression {: System.out.println("Assignment"); :};
-expression ::= expression PLUS term {: System.out.println("+"); :};
-expression ::= expression SUB term {: System.out.println("-"); :};
-expression ::= term {: System.out.println("Expression = Term"); :};
-term ::= term MULT factor {: System.out.println("*"); :};
-term ::= term DIV factor {: System.out.println("/"); :};
-term ::= factor {: System.out.println("Term = factor"); :};
-factor ::= IDENTIFIER:id  {: System.out.println("Id: " + id); :};
-factor ::= INTEGER_CONSTANT:constant {: System.out.println("Constant: " + constant ); :};
-factor ::= OPEN_BRACKET expression CLOSE_BRACKET {: System.out.println("Factor = (Expression)"); :};
+program ::= block {: System.out.println("Compilation Ok"); :};
+block ::= sentence
+        | block sentence {: System.out.println("Nueva sentencia en block"); :}
+        ;
+
+sentence ::=
+       INIT {: System.out.println("Variable declaration starts"); :} OPEN_CURLY_BRACKET var_declaration CLOSE_CURLY_BRACKET {: System.out.println("Variable declaration ends"); :}
+       | decision
+       | iterator
+       | assignment {: System.out.println("Asignación detectada!!!!!"); :}
+       | s_write
+       | s_read
+       | is_zero
+       | conv_date;
+
+
+
+var_declaration ::= var_sencente_dec var_declaration ;
+var_declaration ::= var_sencente_dec;
+var_sencente_dec ::= id_list DOUBLE_DOT data_type {:
+    for (String id : idList) {
+        SymbolTableManager.setDataTypeInTable(id, dataType);
+    }
+    idList.removeAll(idList);
+:};
+data_type ::=
+              INT {:
+                System.out.println("Int data type");
+                dataType = DataType.INTEGER_TYPE;
+            :}
+            | FLOAT {:
+                System.out.println("Float data type");
+                dataType = DataType.FLOAT_TYPE;
+            :}
+            | STRING {:
+                System.out.println("String data type");
+                dataType = DataType.STRING_TYPE;
+            :};
+
+id_list ::= id_list COMMA IDENTIFIER:id {:
+    System.out.println("ID declared: " + id);
+    idList.add(id);
+:} ;
+id_list ::= IDENTIFIER:id {:
+    System.out.println("ID declared: " + id);
+    idList.add(id);
+ :};
+
+decision ::= IF OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET block CLOSE_CURLY_BRACKET {: System.out.println("If statement"); :};
+decision ::= IF OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET block CLOSE_CURLY_BRACKET ELSE OPEN_CURLY_BRACKET block CLOSE_CURLY_BRACKET {: System.out.println("If else statement"); :};
+condition ::= comparison AND_COND comparison {: System.out.println("And  condition"); :};
+condition ::= comparison OR_COND comparison {: System.out.println("Or  condition"); :};
+condition ::= comparison {: System.out.println("Condition = Comparison"); :};
+condition ::= NOT_COND comparison {: System.out.println("Not condition"); :};
+comparison ::= expression:e1 comparator:c expression:e2 {:
+    System.out.println("Comparison detectada: " + e1 + " " + c + " " + e2);
+    RESULT = "(" + e1 + " " + c + " " + e2 + ")";
+:};
+
+
+comparison ::= OPEN_BRACKET condition CLOSE_BRACKET {: System.out.println("Comparison"); :};
+comparator ::= MAYOR {: RESULT = ">"; :}
+             | LOWER {: RESULT = "<"; :}
+             | MAYOR_I {: RESULT = ">="; :}
+             | LOWER_I {: RESULT = "<="; :}
+             | EQUAL {: RESULT = "=="; :}
+             | NOT_EQUAL {: RESULT = "!="; :}
+             ;
+
+
+iterator ::= WHILE OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET block CLOSE_CURLY_BRACKET {: System.out.println("While statement"); :};
+
+assignment ::= IDENTIFIER:id ASSIG expression:e {:
+    System.out.println("Asignación detectada!!!!!");
+    System.out.println("Asignación reconocida: " + id + " := " + (e != null ? e : "ERROR"));
+    RESULT = e != null ? e : "ERROR";
+:};
+
+
+assignment ::= IDENTIFIER ASSIG STRING_CONSTANT {: System.out.println("Assignment to string constant"); :};
+//expression ::= expression PLUS term {: System.out.println("+"); :};
+//expression ::= expression SUB term {: System.out.println("-"); :};
+//expression ::= term {: System.out.println("Expression = Term"); :};
+
+
+expression ::= term:t {:
+    System.out.println("Expression = Term con valor: " + t);
+    RESULT = t;
+:};
+
+expression ::= expression:e PLUS term:t {:
+    System.out.println("Suma detectada: " + e + " + " + t);
+    RESULT = (e != null ? e : "ERROR") + " + " + (t != null ? t : "ERROR");
+:};
+
+expression ::= expression:e SUB term:t {:
+    System.out.println("Resta detectada: " + e + " - " + t);
+    RESULT = (e != null ? e : "ERROR") + " - " + (t != null ? t : "ERROR");
+:};
+
+
+term ::= factor:f {:
+    System.out.println("Term = factor con valor: " + f);
+    RESULT = f;
+:};
+
+term ::= term:tt MULT factor:ff {:
+    System.out.println("Multiplicación detectada: " + tt + " * " + ff);
+    RESULT = tt + " * " + ff;
+:};
+
+term ::= term:tt DIV factor:ff {:
+    System.out.println("División detectada: " + tt + " / " + ff);
+    RESULT = tt + " / " + ff;
+:};
+
+factor ::= IDENTIFIER:id {:
+    System.out.println("Id: " + id);
+    RESULT = id;
+:};
+
+factor ::= INTEGER_CONSTANT:constant {:
+    System.out.println("Integer constant: " + constant);
+    RESULT = constant;
+:};
+
+factor ::= FLOAT_CONSTANT:constant {:
+    System.out.println("Float constant: " + constant);
+    RESULT = constant;
+:};
+
+factor ::= OPEN_BRACKET expression:e CLOSE_BRACKET {:
+    System.out.println("Factor = (Expression) con valor: " + e);
+    RESULT = e != null ? "(" + e + ")" : "ERROR"; //  Asegurar que nunca devuelva null
+:};
+
+/*isZero
+Se desea implementar una función llamada isZero que, dada una expresión numérica, determine si su valor es igual a cero.
+
+La función recibirá como único parámetro una expresión numérica, compuesta por:
+
+Constantes y/o variables enteras o flotantes.
+Operadores aritméticas básicos: +, -, *, /.
+La función devolverá un valor booleano:
+
+-- true si la expresión se evalúa en 0. -- false en caso contrario.
+
+El valor podrá ser usado directamente en condiciones de estructura IF y WHILE.
+
+Ejemplos:
+
+Integer contador := 10;
+WHILE isZero( contador - 10 ) DO
+   print("El contador vale 10")
+   contador := contador - 1
+ENDWHILE
+
+Integer s := 3;
+Integer h := 44;
+IF (isZero( s*7+1-h/2 )) THEN
+   print("La expresion es igual a cero")
+ENDIF*/
+is_zero ::= ISZERO OPEN_BRACKET expression CLOSE_BRACKET {:System.out.println("ISZERO function");:};
+
+//list ::= INTEGER_CONSTANT:constant {: System.out.println("Integer constant: " + constant ); :};
+
+//convDate
+//Se desea implementar una función llamada convDate que convierta una fecha representada por tres números enteros (día, mes y año) en un único valor numérico con el formato YYYYMMDD.
+//Ejemplo:
+//DateConverted dateC;
+//dateC := convDate(21-08-2025)  La fecha convertida (YYYYMMDD) será: 20250821
+
+conv_date ::= CONVDATE OPEN_BRACKET expression CLOSE_BRACKET {:System.out.println("CONVDATE function");:};
+
+
+
+//term ::= term MULT factor {: System.out.println("*"); :};
+//term ::= term DIV factor {: System.out.println("/"); :};
+//term ::= factor {: System.out.println("Term = factor"); :};
+//factor ::= IDENTIFIER:id  {: System.out.println("Id: " + id); :};
+//factor ::= INTEGER_CONSTANT:constant {: System.out.println("Integer constant: " + constant ); :};
+//factor ::= FLOAT_CONSTANT:constant {: System.out.println("Float constant: " + constant ); :};
+//factor ::= OPEN_BRACKET expression CLOSE_BRACKET {: System.out.println("Factor = (Expression)"); :};
+
+s_write ::= WRITE OPEN_BRACKET write_param CLOSE_BRACKET {: System.out.println("Write statement"); :};
+write_param ::= STRING_CONSTANT | IDENTIFIER {: System.out.println("Write parameter"); :};
+
+s_read ::= READ OPEN_BRACKET read_param CLOSE_BRACKET {: System.out.println("Read statement"); :};
+read_param ::= IDENTIFIER {: System.out.println("Read parameter"); :};
+
