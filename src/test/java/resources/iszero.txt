@@ -1,0 +1,4 @@
+isZero( 2*7+1-5/2 )
+
+contador := 10
+isZero( contador - 10 )

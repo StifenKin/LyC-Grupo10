@@ -49,8 +49,8 @@ Read = "read"
 
 /* Funciones especiales */
 
-IsZero = "iszero"
-ConvDate = "convdate"
+IsZero = "isZero"
+ConvDate = "convDate"
 
 FloatConstant = -?[0-9]+(\.[0-9]+)?
 
@@ -154,9 +154,12 @@ StringConstant = \"(([^\"\n]*)\")
                                               if(yytext().length() > 15) {
                                                   throw new InvalidLengthException("Identifier length not allowed: " + yytext());
                                               }
+
+                                              System.out.println("Token IDENTIFIER encontrado: " + yytext());
                                               if(!SymbolTableManager.existsInTable(yytext())){
                                                     SymbolEntry entry = new SymbolEntry(yytext());
                                                     SymbolTableManager.insertInTable(entry);
+                                                     System.out.println("Token IDENTIFIER encontrado si no existe: " + yytext());
                                               }
                                               return symbol(ParserSym.IDENTIFIER, yytext());
                                           }

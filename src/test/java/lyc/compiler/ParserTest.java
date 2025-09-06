@@ -75,6 +75,16 @@ public class ParserTest {
         compilationSuccessful(readFromFile("while.txt"));
     }
 
+    @Test
+    void isZeroStatement() throws Exception {
+        compilationSuccessful(readFromFile("iszero.txt"));
+    }
+
+    @Test
+    void convDateStatement() throws Exception {
+        compilationSuccessful(readFromFile("convdate.txt"));
+    }
+
     private void compilationSuccessful(String input) throws Exception {
         assertThat(scan(input).sym).isEqualTo(ParserSym.EOF);
     }
