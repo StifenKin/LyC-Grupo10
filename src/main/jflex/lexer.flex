@@ -278,27 +278,29 @@ StringConstant = \"(([^\"\n]*)\")
   {OpenSquareBracket}                       { return symbol(ParserSym.OPEN_SQUARE_BRACKET); }
   {CloseSquareBracket}                      { return symbol(ParserSym.CLOSE_SQUARE_BRACKET); }
 
- /* Comparators */
- {Mayor}                                  { return symbol(ParserSym.MAYOR); }
- {Lower}                                  { return symbol(ParserSym.LOWER); }
- {MayorI}                                 { return symbol(ParserSym.MAYOR_I); }
- {LowerI}                                 { return symbol(ParserSym.LOWER_I); }
- {Equal}                                  { return symbol(ParserSym.EQUAL); }
- {NotEqual}                               { return symbol(ParserSym.NOT_EQUAL); }
+  /* Comparators */
+  {Mayor}                                  { return symbol(ParserSym.MAYOR); }
+  {Lower}                                  { return symbol(ParserSym.LOWER); }
+  {MayorI}                                 { return symbol(ParserSym.MAYOR_I); }
+  {LowerI}                                 { return symbol(ParserSym.LOWER_I); }
+  {Equal}                                  { return symbol(ParserSym.EQUAL); }
+  {NotEqual}                               { return symbol(ParserSym.NOT_EQUAL); }
 
- /* Misc */
+  /* Misc */
 
- {Comma}                                  { return symbol(ParserSym.COMMA); }
- {SemiColon}                              { return symbol(ParserSym.SEMI_COLON); }
- {Dot}                                    { return symbol(ParserSym.DOT); }
- {DoubleDot}                              { return symbol(ParserSym.DOUBLE_DOT); }
+  {Comma}                                  { return symbol(ParserSym.COMMA); }
+  {SemiColon}                              { return symbol(ParserSym.SEMI_COLON); }
+  {Dot}                                    { return symbol(ParserSym.DOT); }
+  {DoubleDot}                              { return symbol(ParserSym.DOUBLE_DOT); }
 
-  /* whitespace */
-  {WhiteSpace}                   { /* ignore */ }
+    /* whitespace */
+    {WhiteSpace}                   { /* ignore */ }
+
+    /* error fallback */
+    [^]                              { throw new UnknownCharacterException(yytext()); }
+
+
 }
 
 
-
-/* error fallback */
-[^]                              { throw new UnknownCharacterException(yytext()); }
 

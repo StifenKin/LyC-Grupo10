@@ -167,6 +167,7 @@ decision ::= if_head OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET opt
                 else_head OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET;
 
 
+condition ::= is_zero;
 condition ::= comparison AND_COND comparison {: System.out.println("And condition"); :};
 condition ::= comparison OR_COND comparison {: System.out.println("Or condition"); :};
 condition ::= comparison {: System.out.println("Condition = Comparison"); :};
@@ -295,7 +296,7 @@ read_param ::=
 
 //isZero
 
-condition ::= ISZERO OPEN_BRACKET expression:e CLOSE_BRACKET
+is_zero ::= ISZERO OPEN_BRACKET expression:e CLOSE_BRACKET
               {: System.out.println("Condition = isZero(" + e + ")"); :};
 
 
