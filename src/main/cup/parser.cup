@@ -1,17 +1,18 @@
 package lyc.compiler;
 
 import java_cup.runtime.*;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
 import lyc.compiler.table.*;
 import java.util.HashMap;
 import lyc.compiler.model.InvalidDateFormat;
+import lyc.compiler.model.DuplicatedIdentifier;
 
 class Parser;
 
 action code {:
     HashMap<String, SymbolEntry> symbolTable = SymbolTableManager.symbolTable;
-    List<String> idList = new ArrayList<>();
+    Set<String> idList = new HashSet<>();
     DataType dataType;
 :}
 
@@ -69,6 +70,7 @@ non terminal var_declaration;
 non terminal var_sencente_dec;
 non terminal data_type;
 non terminal id_list;
+non terminal id_item;
 non terminal decision;
 non terminal condition;
 non terminal comparison;
@@ -126,10 +128,12 @@ var_declaration ::= var_sencente_dec var_declaration;
 var_declaration ::= var_sencente_dec;
 var_sencente_dec ::= id_list DOUBLE_DOT data_type {:
     for (String id : idList) {
-        SymbolTableManager.setDataTypeInTable(id, dataType);
+        SymbolTableManager.setDataTypeInTable(id, dataType);  
     }
-    idList.removeAll(idList);
+
+    idList.clear();
 :};
+
 data_type ::=
               INT {:
                 System.out.println("Int data type");
@@ -148,14 +152,23 @@ data_type ::=
                 dataType = DataType.STRING_TYPE;
             :};
 
-id_list ::= id_list COMMA IDENTIFIER:id {:
-    System.out.println("ID declared: " + id);
-    idList.add(id);
-:} ;
-id_list ::= IDENTIFIER:id {:
-    System.out.println("ID declared: " + id);
-    idList.add(id);
- :};
+id_list ::=
+      id_item
+    | id_list COMMA id_item
+    ;
+
+
+id_item ::= IDENTIFIER:id {:
+    System.out.println("ID detected: " + id);
+    if (!idList.add(id)) {
+        throw new DuplicatedIdentifier("Identificador repetido en la misma declaración: " + id);
+    }
+    if (SymbolTableManager.existsInTable(id)) {
+        throw new DuplicatedIdentifier("Identificador " + id + " ya declarado antes");
+    }
+    SymbolTableManager.insertInTable(new SymbolEntry(id));
+:};
+
 
 
 if_head ::= IF {: System.out.println("If statement"); :};
