@@ -1,1 +1,111 @@
-c:=d*(e-21)/4
+#+--------------------- Comentario de una línea ---------------------+#
+
+#+--------------------- Comentario --------------------- 
+    de varias 
+    lineas
++#
+
+#+--------------------- Comentario anidado --------------------- 
+    #+--------------------- Nivel 1 ---------------------+#
++#
+
+
+#+--------------------- Declaracion de variables ---------------------+#
+
+init {
+    a1, b1 : Float
+    variable1 : Int
+    p1, p2, p3 : String
+}
+
+#+--------------------- Funcion WRITE ---------------------+#
+
+write("ewr")  #+ "ewr" es una cte string +#
+write(var1)  #+ var1 es una variable numérica definida previamente +#
+
+
+#+--------------------- Funcion READ ---------------------+#
+
+read(base) #+ base es una variable +#
+
+#+--------------------- Asignaciones ---------------------+#
+
+a := 99999.99
+a := 99.
+a := .9999
+a := 99
+
+b := "@sdADaSjfla%dfg"
+b := "asldk  fh sjf"
+
+#+--------------------- Aritmetica ---------------------+#
+
+c := -(5+a)
+c := d*(e-21)
+
+
+
+#+--------------------- Comparaciones ---------------------+#
+
+if (NOT a > b)
+{
+    write("a no es mas grande que b")
+}
+
+if (a > b OR c > b)
+{
+    write("a es mas grande que b o c es mas grande que b")
+}
+
+if (a > b AND c > b)
+{
+    write("a es mas grande que b y c es mas grande que b")
+}
+
+if (a > b)
+{
+    write("a es mas grande que b y c es mas grande que b")
+}
+
+
+
+#+--------------------- If -Else ---------------------+#
+if (a > b)
+{
+    write("a es mas grande que b")
+}
+else
+{
+    write("a es mas chico o igual a b")
+}
+
+#+--------------------- If -Else anidados ---------------------+#
+
+if (a == b)
+{
+    if (b != c) {}
+}
+else
+{
+    if(a != c){}
+
+    else{}
+}
+
+
+#+--------------------- isZero ---------------------+#
+
+if (isZero( contador - 10))
+{
+    
+}
+while (isZero( s*7+1-h/2 ))
+{
+
+}
+#+--------------------- convDate ---------------------+#
+
+init {
+    dateC, anotherDateC : DateConverted
+}
+dateC := convDate(21-08-2025)

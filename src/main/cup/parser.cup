@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.ArrayList;
 import lyc.compiler.table.*;
 import java.util.HashMap;
+import lyc.compiler.model.InvalidDateFormat;
 
 class Parser;
 
@@ -14,7 +15,6 @@ action code {:
     DataType dataType;
 :}
 
-// Terminals
 
 // Terminals
 terminal ASSIG;
@@ -58,7 +58,8 @@ terminal String IDENTIFIER;
 terminal INIT;
 terminal ISZERO;
 terminal CONVDATE;
-
+terminal DATECONVERTED;
+terminal DATE_LITERAL;
 
 // Non Terminals
 non terminal program;
@@ -85,28 +86,43 @@ non terminal is_zero;
 non terminal conv_date;
 non terminal c_list;
 non terminal list;
+non terminal sep;
+non terminal if_head;
+non terminal else_head;
+non terminal opt_block;
+non terminal it_head;
+
 
 // Start Symbol Definition
 start with program;
 
-program ::= block {: System.out.println("Compilation Ok"); :};
+program   ::= opt_block {: System.out.println("Compilation Ok"); :};
+
+//    program ::= block {: System.out.println("Compilation Ok"); :}
+//            | /* Empty */   {: System.out.println("Archivo vacío -> Compilation Ok"); :} ; 
+
+opt_block ::= block
+            | /* empty */; //Uso de LAMBDA.
+
+sep ::= {: System.out.println("----------------Nueva Sentencia---------------"); :};
+
 block ::= sentence
-        | block sentence {: System.out.println("Nueva sentencia en block"); :}
-        ;
+        | block sep sentence;
+
 
 sentence ::=
        INIT {: System.out.println("Variable declaration starts"); :} OPEN_CURLY_BRACKET var_declaration CLOSE_CURLY_BRACKET {: System.out.println("Variable declaration ends"); :}
-       | decision
-       | iterator
-       | assignment {: System.out.println("Asignación detectada!!!!!"); :}
-       | s_write
-       | s_read
-       | is_zero
-       | conv_date;
+       |  decision
+       |  iterator
+       |  assignment
+       |  s_write
+       |  s_read
+       |  is_zero
+       |  conv_date;
 
 
 
-var_declaration ::= var_sencente_dec var_declaration ;
+var_declaration ::= var_sencente_dec var_declaration;
 var_declaration ::= var_sencente_dec;
 var_sencente_dec ::= id_list DOUBLE_DOT data_type {:
     for (String id : idList) {
@@ -126,6 +142,10 @@ data_type ::=
             | STRING {:
                 System.out.println("String data type");
                 dataType = DataType.STRING_TYPE;
+            :}
+            | DATECONVERTED {:
+                System.out.println("DateConverted data type");
+                dataType = DataType.STRING_TYPE;
             :};
 
 id_list ::= id_list COMMA IDENTIFIER:id {:
@@ -137,19 +157,27 @@ id_list ::= IDENTIFIER:id {:
     idList.add(id);
  :};
 
-decision ::= IF OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET block CLOSE_CURLY_BRACKET {: System.out.println("If statement"); :};
-decision ::= IF OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET block CLOSE_CURLY_BRACKET ELSE OPEN_CURLY_BRACKET block CLOSE_CURLY_BRACKET {: System.out.println("If else statement"); :};
-condition ::= comparison AND_COND comparison {: System.out.println("And  condition"); :};
-condition ::= comparison OR_COND comparison {: System.out.println("Or  condition"); :};
+
+if_head ::= IF {: System.out.println("If statement"); :};
+
+else_head ::= ELSE {: System.out.println("Else branch"); :};
+
+decision ::= if_head OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET;
+decision ::= if_head OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET 
+                else_head OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET;
+
+
+condition ::= comparison AND_COND comparison {: System.out.println("And condition"); :};
+condition ::= comparison OR_COND comparison {: System.out.println("Or condition"); :};
 condition ::= comparison {: System.out.println("Condition = Comparison"); :};
 condition ::= NOT_COND comparison {: System.out.println("Not condition"); :};
 comparison ::= expression:e1 comparator:c expression:e2 {:
-    System.out.println("Comparison detectada: " + e1 + " " + c + " " + e2);
+    System.out.println("Comparison detected: " + e1 + " " + c + " " + e2);
     RESULT = "(" + e1 + " " + c + " " + e2 + ")";
 :};
 
 
-comparison ::= OPEN_BRACKET condition CLOSE_BRACKET {: System.out.println("Comparison"); :};
+
 comparator ::= MAYOR {: RESULT = ">"; :}
              | LOWER {: RESULT = "<"; :}
              | MAYOR_I {: RESULT = ">="; :}
@@ -159,23 +187,31 @@ comparator ::= MAYOR {: RESULT = ">"; :}
              ;
 
 
-iterator ::= WHILE OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET block CLOSE_CURLY_BRACKET {: System.out.println("While statement"); :};
+it_head ::= WHILE {: System.out.println("While statement"); :};
+iterator ::= it_head OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET ;
 
-assignment ::= IDENTIFIER:id ASSIG expression:e {:
-    System.out.println("Asignación detectada!!!!!");
-    System.out.println("Asignación reconocida: " + id + " := " + (e != null ? e : "ERROR"));
-    RESULT = e != null ? e : "ERROR";
-:};
+assignment ::=
+    IDENTIFIER:id ASSIG expression:e
+    {:
+        System.out.println("Assignment detected");
+        System.out.println(id + " := " + (e != null ? e : "ERROR"));
+        RESULT = e != null ? e : "ERROR";
+    :}
+  | IDENTIFIER:id ASSIG STRING_CONSTANT:s
+    {:  
+        System.out.println("Assignment detected");
+        System.out.println(id+ " = "+ s );
+        RESULT = s;
+    :}
+  | IDENTIFIER:id ASSIG conv_date:cd
+    {:  
+        System.out.println("Assignment detected");
+        System.out.println(id+ " = "+ cd );
+        RESULT = cd;
+    :}
 
-
-assignment ::= IDENTIFIER ASSIG STRING_CONSTANT {: System.out.println("Assignment to string constant"); :};
-//expression ::= expression PLUS term {: System.out.println("+"); :};
-//expression ::= expression SUB term {: System.out.println("-"); :};
-//expression ::= term {: System.out.println("Expression = Term"); :};
-
-
+;
 expression ::= term:t {:
-    System.out.println("Expression = Term con valor: " + t);
     RESULT = t;
 :};
 
@@ -191,7 +227,6 @@ expression ::= expression:e SUB term:t {:
 
 
 term ::= factor:f {:
-    System.out.println("Term = factor con valor: " + f);
     RESULT = f;
 :};
 
@@ -203,6 +238,10 @@ term ::= term:tt MULT factor:ff {:
 term ::= term:tt DIV factor:ff {:
     System.out.println("División detectada: " + tt + " / " + ff);
     RESULT = tt + " / " + ff;
+:};
+factor ::= SUB factor:f {:
+    System.out.println("Unario: -" + f);
+    RESULT = "-" + f;
 :};
 
 factor ::= IDENTIFIER:id {:
@@ -225,57 +264,61 @@ factor ::= OPEN_BRACKET expression:e CLOSE_BRACKET {:
     RESULT = e != null ? "(" + e + ")" : "ERROR"; //  Asegurar que nunca devuelva null
 :};
 
-/*isZero
-Se desea implementar una función llamada isZero que, dada una expresión numérica, determine si su valor es igual a cero.
 
-La función recibirá como único parámetro una expresión numérica, compuesta por:
 
-Constantes y/o variables enteras o flotantes.
-Operadores aritméticas básicos: +, -, *, /.
-La función devolverá un valor booleano:
 
--- true si la expresión se evalúa en 0. -- false en caso contrario.
 
-El valor podrá ser usado directamente en condiciones de estructura IF y WHILE.
 
-Ejemplos:
+s_write ::=
+    WRITE OPEN_BRACKET write_param:wp CLOSE_BRACKET
+    {:
+        System.out.println("Write statement");
+        System.out.println("Write parameter: " + wp);
+    :};
 
-Integer contador := 10;
-WHILE isZero( contador - 10 ) DO
-   print("El contador vale 10")
-   contador := contador - 1
-ENDWHILE
+write_param ::=
+      STRING_CONSTANT:sc
+        {: RESULT = sc; :}
+    | IDENTIFIER:id
+        {: RESULT = id; :};
 
-Integer s := 3;
-Integer h := 44;
-IF (isZero( s*7+1-h/2 )) THEN
-   print("La expresion es igual a cero")
-ENDIF*/
-is_zero ::= ISZERO OPEN_BRACKET expression CLOSE_BRACKET {:System.out.println("ISZERO function");:};
+s_read ::= 
+    READ OPEN_BRACKET read_param:rp CLOSE_BRACKET 
+    {: 
+        System.out.println("Read statement"); 
+        System.out.println("Read parameter: " + rp);
+    :};
+read_param ::= 
+    IDENTIFIER:id
+        {: RESULT = id; :};
 
-//list ::= INTEGER_CONSTANT:constant {: System.out.println("Integer constant: " + constant ); :};
+
+//isZero
+
+condition ::= ISZERO OPEN_BRACKET expression:e CLOSE_BRACKET
+              {: System.out.println("Condition = isZero(" + e + ")"); :};
+
 
 //convDate
-//Se desea implementar una función llamada convDate que convierta una fecha representada por tres números enteros (día, mes y año) en un único valor numérico con el formato YYYYMMDD.
-//Ejemplo:
-//DateConverted dateC;
-//dateC := convDate(21-08-2025)  La fecha convertida (YYYYMMDD) será: 20250821
+conv_date ::= CONVDATE OPEN_BRACKET DATE_LITERAL:date CLOSE_BRACKET
+{:
+    String raw = (String)date;   
+    String[] parts = raw.split("-");
 
-conv_date ::= CONVDATE OPEN_BRACKET expression CLOSE_BRACKET {:System.out.println("CONVDATE function");:};
+    if (parts.length != 3) {
+        throw new InvalidDateFormat("Formato de fecha inválido: " + raw);
+    }
 
+    int d = Integer.parseInt(parts[0]);
+    int m = Integer.parseInt(parts[1]);
+    int y = Integer.parseInt(parts[2]);
 
+    try {
+        java.time.LocalDate.of(y, m, d);
+    } catch (java.time.DateTimeException ex) {
+        throw new InvalidDateFormat("Fecha no valida: " + raw);
+    } 
 
-//term ::= term MULT factor {: System.out.println("*"); :};
-//term ::= term DIV factor {: System.out.println("/"); :};
-//term ::= factor {: System.out.println("Term = factor"); :};
-//factor ::= IDENTIFIER:id  {: System.out.println("Id: " + id); :};
-//factor ::= INTEGER_CONSTANT:constant {: System.out.println("Integer constant: " + constant ); :};
-//factor ::= FLOAT_CONSTANT:constant {: System.out.println("Float constant: " + constant ); :};
-//factor ::= OPEN_BRACKET expression CLOSE_BRACKET {: System.out.println("Factor = (Expression)"); :};
-
-s_write ::= WRITE OPEN_BRACKET write_param CLOSE_BRACKET {: System.out.println("Write statement"); :};
-write_param ::= STRING_CONSTANT | IDENTIFIER {: System.out.println("Write parameter"); :};
-
-s_read ::= READ OPEN_BRACKET read_param CLOSE_BRACKET {: System.out.println("Read statement"); :};
-read_param ::= IDENTIFIER {: System.out.println("Read parameter"); :};
-
+    String yyyymmdd = String.format("%04d%02d%02d", y, m, d);
+    RESULT = yyyymmdd;
+:};
