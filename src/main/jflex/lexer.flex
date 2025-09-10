@@ -205,20 +205,17 @@ StringConstant = \"(([^\"\n]*)\")
 
 
 
-  {IntegerConstant}                        {    
-                                                String text = yytext();
-                                                int value = Integer.parseInt(text);
-
-                                                if(value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
-                                                    throw new InvalidIntegerException("Integer out of range: " + text);
+{IntegerConstant}                        {
+                                                if(yytext().length() > 5 || Integer.valueOf(yytext()) > 65535) {
+                                                    throw new InvalidIntegerException("Integer out of range: " + yytext());
                                                 }
 
                                                 if(!SymbolTableManager.existsInTable(yytext())){
-                                                      SymbolEntry entry = new SymbolEntry("_"+text, DataType.INTEGER_CONS, text);
+                                                      SymbolEntry entry = new SymbolEntry("_"+yytext(), DataType.INTEGER_CONS, yytext());
                                                       SymbolTableManager.insertInTable(entry);
                                                 }
 
-                                                return symbol(ParserSym.INTEGER_CONSTANT, text);
+                                                return symbol(ParserSym.INTEGER_CONSTANT, yytext());
                                             }
 
   {FloatConstant}                           { 
