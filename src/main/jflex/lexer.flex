@@ -195,11 +195,16 @@ StringConstant = \"(([^\"\n]*)\")
 
   /* Identifiers */
   {BooleanConstant}                         { return symbol(ParserSym.BOOLEAN_CONSTANT); }
-  {Identifier}                             {
+  {Identifier}                             {  
+                                              String id = yytext();
                                               if(yytext().length() > 15) {
-                                                  throw new InvalidLengthException("Identifier length not allowed: " + yytext());
+                                                  throw new InvalidLengthException("Identifier length not allowed: " + id);
                                               }
-                                              return symbol(ParserSym.IDENTIFIER, yytext());
+                                              if (!SymbolTableManager.existsInTable(id)) {
+                                                SymbolEntry entry = new SymbolEntry(id, DataType.ID);
+                                                SymbolTableManager.insertInTable(entry);
+                                              } 
+                                              return symbol(ParserSym.IDENTIFIER, id);
                                           }
   /* Constants */
 
@@ -211,27 +216,27 @@ StringConstant = \"(([^\"\n]*)\")
                                                 }
 
                                                 if(!SymbolTableManager.existsInTable(yytext())){
-                                                      SymbolEntry entry = new SymbolEntry("_"+yytext(), DataType.INTEGER_CONS, yytext());
+                                                      SymbolEntry entry = new SymbolEntry("_"+yytext(), DataType.INTEGER_TYPE, yytext());
                                                       SymbolTableManager.insertInTable(entry);
                                                 }
 
-                                                return symbol(ParserSym.INTEGER_CONSTANT, yytext());
+                                                return symbol(ParserSym.INTEGER_CONSTANT, "_"+yytext());
                                             }
 
   {FloatConstant}                           { 
-                                                String text = yytext();
-                                                float value = Float.parseFloat(text);
+                                                
+                                                float value = Float.parseFloat(yytext());
 
                                                 if (!Float.isFinite(value)) {
-                                                  throw new InvalidFloatException("Float out of range: " + text);
+                                                  throw new InvalidFloatException("Float out of range: " + yytext());
                                                 }
 
-                                                if (!SymbolTableManager.existsInTable(text)) {
-                                                    SymbolEntry entry = new SymbolEntry("_" + text, DataType.FLOAT_CONS, text);
+                                                if (!SymbolTableManager.existsInTable(yytext())) {
+                                                    SymbolEntry entry = new SymbolEntry("_"+yytext(), DataType.FLOAT_TYPE, yytext());
                                                     SymbolTableManager.insertInTable(entry);
                                                 }
 
-                                                return symbol(ParserSym.FLOAT_CONSTANT, text);
+                                                return symbol(ParserSym.FLOAT_CONSTANT, "_"+yytext());
                                             }
 
 
@@ -244,13 +249,13 @@ StringConstant = \"(([^\"\n]*)\")
 
                                                 sb.replace(0,1,"");
                                                 sb.replace(sb.length()-1,sb.length(),""); //trim extra quotes
-
+                                              
                                                 if(!SymbolTableManager.existsInTable(yytext())){
-                                                      SymbolEntry entry = new SymbolEntry("_"+sb.toString(), DataType.STRING_CONS, sb.toString(), Integer.toString(sb.length()));
+                                                      SymbolEntry entry = new SymbolEntry("_"+sb.toString(), DataType.STRING_TYPE, sb.toString(), Integer.toString(sb.length()));
                                                       SymbolTableManager.insertInTable(entry);
                                                 }
 
-                                                return symbol(ParserSym.STRING_CONSTANT, yytext());
+                                                return symbol(ParserSym.STRING_CONSTANT, "_"+sb.toString());
                                             }
   /*Declaration*/
   {Init}                                    { return symbol(ParserSym.INIT); }

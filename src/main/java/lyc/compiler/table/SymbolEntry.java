@@ -50,4 +50,8 @@ public class SymbolEntry {
   public String getLength() { return length; }
 
   public void setLength(String length) { this.length = length; }
+
+  public boolean isDeclared() {
+    return dataType != null && DataType.ID != dataType;
+  }
 }
