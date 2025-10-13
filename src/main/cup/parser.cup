@@ -3,17 +3,20 @@ package lyc.compiler;
 import java_cup.runtime.*;
 import java.util.Set;
 import java.util.HashSet;
-import lyc.compiler.table.*;
 import java.util.HashMap;
-import lyc.compiler.model.InvalidDateFormat;
-import lyc.compiler.model.DuplicatedIdentifier;
+import java.util.Map;
+import lyc.compiler.table.*;
+import lyc.compiler.files.IntermediateCodeGenerator;
+import lyc.compiler.files.Operator;
+import lyc.compiler.files.TypeTable;
+import java.util.HashMap;
+import lyc.compiler.model.*;
+
 
 class Parser;
 
 action code {:
-    HashMap<String, SymbolEntry> symbolTable = SymbolTableManager.symbolTable;
     Set<String> idList = new HashSet<>();
-    DataType dataType;
 :}
 
 
@@ -23,6 +26,7 @@ terminal PLUS;
 terminal SUB;
 terminal MULT;
 terminal DIV;
+terminal MOD;
 terminal REST;
 terminal MAYOR;
 terminal LOWER;
@@ -43,9 +47,9 @@ terminal COMMA;
 terminal SEMI_COLON;
 terminal DOT;
 terminal DOUBLE_DOT;
-terminal INTEGER_CONSTANT;
-terminal FLOAT_CONSTANT;
-terminal STRING_CONSTANT;
+terminal String INTEGER_CONSTANT;
+terminal String FLOAT_CONSTANT;
+terminal String STRING_CONSTANT;
 terminal BOOLEAN_CONSTANT;
 terminal INT;
 terminal FLOAT;
@@ -68,7 +72,7 @@ non terminal block;
 non terminal sentence;
 non terminal var_declaration;
 non terminal var_sencente_dec;
-non terminal data_type;
+non terminal DataType data_type;
 non terminal id_list;
 non terminal id_item;
 non terminal decision;
@@ -79,11 +83,11 @@ non terminal iterator;
 non terminal assignment;
 non terminal s_write;
 non terminal s_read;
-non terminal write_param;
-non terminal read_param;
-non terminal expression;
-non terminal term;
-non terminal factor;
+non terminal String write_param;
+non terminal String read_param;
+non terminal Integer expression;
+non terminal Integer term;
+non terminal Integer factor;
 non terminal is_zero;
 non terminal conv_date;
 non terminal c_list;
@@ -93,6 +97,7 @@ non terminal if_head;
 non terminal else_head;
 non terminal opt_block;
 non terminal it_head;
+non terminal var_body;
 
 
 // Start Symbol Definition
@@ -100,8 +105,6 @@ start with program;
 
 program   ::= opt_block {: System.out.println("Compilation Ok"); :};
 
-//    program ::= block {: System.out.println("Compilation Ok"); :}
-//            | /* Empty */   {: System.out.println("Archivo vacío -> Compilation Ok"); :} ; 
 
 opt_block ::= block
             | /* empty */; //Uso de LAMBDA.
@@ -113,7 +116,7 @@ block ::= sentence
 
 
 sentence ::=
-       INIT {: System.out.println("Variable declaration starts"); :} OPEN_CURLY_BRACKET var_declaration CLOSE_CURLY_BRACKET {: System.out.println("Variable declaration ends"); :}
+        var_declaration
        |  decision
        |  iterator
        |  assignment
@@ -124,32 +127,34 @@ sentence ::=
 
 
 
-var_declaration ::= var_sencente_dec var_declaration;
-var_declaration ::= var_sencente_dec;
-var_sencente_dec ::= id_list DOUBLE_DOT data_type {:
-    for (String id : idList) {
-        SymbolTableManager.setDataTypeInTable(id, dataType);  
-    }
+var_declaration ::= INIT {: System.out.println("Variable declaration starts"); :} OPEN_CURLY_BRACKET var_body CLOSE_CURLY_BRACKET {: System.out.println("Variable declaration ends"); :};
 
+var_body ::= var_sencente_dec var_body;
+var_body ::= var_sencente_dec;
+var_sencente_dec ::= id_list DOUBLE_DOT data_type:dt {:
+    for (String id : idList) {
+        SymbolTableManager.setDataTypeInTable(id, dt);  
+        IntermediateCodeGenerator.createTriplet(Operator.DECLARE, id, dt);
+    }
     idList.clear();
 :};
 
 data_type ::=
               INT {:
                 System.out.println("Int data type");
-                dataType = DataType.INTEGER_TYPE;
+                RESULT = DataType.INTEGER_TYPE;
             :}
             | FLOAT {:
                 System.out.println("Float data type");
-                dataType = DataType.FLOAT_TYPE;
+                RESULT = DataType.FLOAT_TYPE;
             :}
             | STRING {:
                 System.out.println("String data type");
-                dataType = DataType.STRING_TYPE;
+                RESULT = DataType.STRING_TYPE;
             :}
             | DATECONVERTED {:
                 System.out.println("DateConverted data type");
-                dataType = DataType.STRING_TYPE;
+                RESULT = DataType.STRING_TYPE; 
             :};
 
 id_list ::=
@@ -158,17 +163,19 @@ id_list ::=
     ;
 
 
+
 id_item ::= IDENTIFIER:id {:
-    System.out.println("ID detected: " + id);
+    SymbolEntry entry = SymbolTableManager.get(id);
+
+    if (entry.getDataType() != DataType.ID) {
+        // Ya tenía tipo asignado → redeclaración
+        throw new DuplicatedIdentifier("Identificador '" + id + "' ya declarado antes");
+    }
+
     if (!idList.add(id)) {
         throw new DuplicatedIdentifier("Identificador repetido en la misma declaración: " + id);
     }
-    if (SymbolTableManager.existsInTable(id)) {
-        throw new DuplicatedIdentifier("Identificador " + id + " ya declarado antes");
-    }
-    SymbolTableManager.insertInTable(new SymbolEntry(id));
 :};
-
 
 
 if_head ::= IF {: System.out.println("If statement"); :};
@@ -185,6 +192,9 @@ condition ::= comparison AND_COND comparison {: System.out.println("And conditio
 condition ::= comparison OR_COND comparison {: System.out.println("Or condition"); :};
 condition ::= comparison {: System.out.println("Condition = Comparison"); :};
 condition ::= NOT_COND comparison {: System.out.println("Not condition"); :};
+condition ::= NOT_COND OPEN_BRACKET condition CLOSE_BRACKET {: System.out.println("Not condition with parentheses"); :};
+condition ::= OPEN_BRACKET condition CLOSE_BRACKET {: System.out.println("Parenthesized condition"); :};
+
 comparison ::= expression:e1 comparator:c expression:e2 {:
     System.out.println("Comparison detected: " + e1 + " " + c + " " + e2);
     RESULT = "(" + e1 + " " + c + " " + e2 + ")";
@@ -206,37 +216,87 @@ iterator ::= it_head OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET opt
 
 assignment ::=
     IDENTIFIER:id ASSIG expression:e
-    {:
+    {:          
+    
         System.out.println("Assignment detected");
         System.out.println(id + " := " + (e != null ? e : "ERROR"));
-        RESULT = e != null ? e : "ERROR";
+        SymbolEntry entry = SymbolTableManager.get(id);
+        if(!entry.isDeclared())
+            throw new UndefinedIdentifierException("El identificador: "+id+ " no fue declarado");
+
+        DataType dst = entry.getDataType();
+        DataType src = TypeTable.getType(e);
+
+        if (!TypeTable.areCompatible(dst, src, Operator.ASSIGN)) {
+          throw new TypeMismatchException("Tipos incompatibles en asignación: " + dst + " := " + src);
+        }
+
+        IntermediateCodeGenerator.createTriplet(Operator.ASSIGN, id, e);
     :}
   | IDENTIFIER:id ASSIG STRING_CONSTANT:s
     {:  
+
         System.out.println("Assignment detected");
         System.out.println(id+ " = "+ s );
-        RESULT = s;
+
+        SymbolEntry entry = SymbolTableManager.get(id);
+        if(!entry.isDeclared())
+            throw new UndefinedIdentifierException("El identificador: "+id+ " no fue declarado");
+
+        int litIdx = IntermediateCodeGenerator.createTriplet(Operator.CTE, s).getIndex();
+        TypeTable.putType(litIdx, DataType.STRING_TYPE);
+
+        DataType dst = entry.getDataType();
+        DataType src = TypeTable.getType(litIdx);
+
+        if (!TypeTable.areCompatible(dst, src, Operator.ASSIGN)) {
+            throw new TypeMismatchException("Tipos incompatibles en asignación: " + dst + " := " + src);
+        }
+
+        IntermediateCodeGenerator.createTriplet(Operator.ASSIGN, id, s);
     :}
   | IDENTIFIER:id ASSIG conv_date:cd
     {:  
         System.out.println("Assignment detected");
         System.out.println(id+ " = "+ cd );
         RESULT = cd;
-    :}
+    :};
 
-;
+
 expression ::= term:t {:
     RESULT = t;
 :};
 
 expression ::= expression:e PLUS term:t {:
     System.out.println("Suma detectada: " + e + " + " + t);
-    RESULT = (e != null ? e : "ERROR") + " + " + (t != null ? t : "ERROR");
+
+    DataType t1 = TypeTable.getType(e);
+    DataType t2 = TypeTable.getType(t);
+
+    if (!TypeTable.areCompatible(t1, t2, Operator.ADD)) {
+        throw new TypeMismatchException("Tipos incompatibles para +: " + t1 + " y " + t2);
+    }
+
+    DataType rType = TypeTable.resultType(t1, t2, Operator.ADD);
+    int idx = IntermediateCodeGenerator.createTriplet(Operator.ADD, e, t).getIndex();
+    RESULT = idx;
+    TypeTable.putType(idx, rType);
 :};
 
 expression ::= expression:e SUB term:t {:
     System.out.println("Resta detectada: " + e + " - " + t);
-    RESULT = (e != null ? e : "ERROR") + " - " + (t != null ? t : "ERROR");
+
+    DataType t1 = TypeTable.getType(e);
+    DataType t2 = TypeTable.getType(t);
+
+    if (!TypeTable.areCompatible(t1, t2, Operator.SUB)) {
+        throw new TypeMismatchException("Tipos incompatibles para -: " + t1 + " y " + t2);
+    }
+
+    DataType rType = TypeTable.resultType(t1, t2, Operator.SUB);
+    int idx = IntermediateCodeGenerator.createTriplet(Operator.SUB, e, t).getIndex();
+    RESULT = idx;
+    TypeTable.putType(idx, rType);
 :};
 
 
@@ -246,48 +306,109 @@ term ::= factor:f {:
 
 term ::= term:tt MULT factor:ff {:
     System.out.println("Multiplicación detectada: " + tt + " * " + ff);
-    RESULT = tt + " * " + ff;
+
+    DataType t1 = TypeTable.getType(tt);
+    DataType t2 = TypeTable.getType(ff);
+
+    if (!TypeTable.areCompatible(t1, t2, Operator.MUL)) {
+        throw new TypeMismatchException(
+            "Tipos incompatibles para *: " + t1 + " y " + t2
+        );
+    }
+    DataType rType = TypeTable.resultType(t1, t2, Operator.MUL);
+
+    int idx = IntermediateCodeGenerator.createTriplet(Operator.MUL, tt, ff).getIndex();
+    RESULT = idx;
+    TypeTable.putType(idx, rType);
 :};
 
 term ::= term:tt DIV factor:ff {:
     System.out.println("División detectada: " + tt + " / " + ff);
-    RESULT = tt + " / " + ff;
+
+    DataType t1 = TypeTable.getType(tt);
+    DataType t2 = TypeTable.getType(ff);
+
+    if (!TypeTable.areCompatible(t1, t2, Operator.DIV)) {
+        throw new TypeMismatchException(
+            "Tipos incompatibles para /: " + t1 + " y " + t2
+        );
+    }
+    DataType rType = TypeTable.resultType(t1, t2, Operator.DIV);
+
+    int idx = IntermediateCodeGenerator.createTriplet(Operator.DIV, tt, ff).getIndex();
+    RESULT = idx;
+    TypeTable.putType(idx, rType);
 :};
+
+term ::= term:tt MOD factor:ff {:
+    System.out.println("Módulo detectada: " + tt + " % " + ff);
+
+    DataType t1 = TypeTable.getType(tt);
+    DataType t2 = TypeTable.getType(ff);
+
+    if (!TypeTable.areCompatible(t1, t2, Operator.MOD)) {
+        throw new TypeMismatchException(
+            "Tipos incompatibles para %: " + t1 + " y " + t2
+        );
+    }
+    DataType rType = TypeTable.resultType(t1, t2, Operator.MOD);
+
+    int idx = IntermediateCodeGenerator.createTriplet(Operator.MOD, tt, ff).getIndex();
+    RESULT = idx;
+    TypeTable.putType(idx, rType);
+:};
+
 factor ::= SUB factor:f {:
     System.out.println("Unario: -" + f);
-    RESULT = "-" + f;
+    DataType t = TypeTable.getType(f);
+    
+    if (!t.isNumeric()) {
+        throw new TypeMismatchException("El operador '-' unario requiere tipo numérico. Encontrado: " + t);
+    }
+    int idx = IntermediateCodeGenerator.createTriplet(Operator.NEG, f).getIndex();
+    RESULT = idx;
+    TypeTable.putType(idx, t);
 :};
 
 factor ::= IDENTIFIER:id {:
+    SymbolEntry entry = SymbolTableManager.get(id);
+    if(!entry.isDeclared())
+        throw new UndefinedIdentifierException("La variable id: "+id+" no fue declarada");
+
     System.out.println("Id: " + id);
-    RESULT = id;
+    int idx = IntermediateCodeGenerator.createTriplet(Operator.ID, id).getIndex();
+    RESULT = idx;
+
+    DataType t = SymbolTableManager.get(id).getDataType();
+    TypeTable.putType(idx, t);
+
 :};
 
 factor ::= INTEGER_CONSTANT:constant {:
     System.out.println("Integer constant: " + constant);
-    RESULT = constant;
+    int idx = IntermediateCodeGenerator.createTriplet(Operator.CTE, constant).getIndex();
+    RESULT = idx;
+    TypeTable.putType(idx, DataType.INTEGER_TYPE);
 :};
 
 factor ::= FLOAT_CONSTANT:constant {:
     System.out.println("Float constant: " + constant);
-    RESULT = constant;
+    int idx = IntermediateCodeGenerator.createTriplet(Operator.CTE, constant).getIndex();
+    RESULT = idx;
+    TypeTable.putType(idx, DataType.FLOAT_TYPE);
 :};
 
 factor ::= OPEN_BRACKET expression:e CLOSE_BRACKET {:
-    System.out.println("Factor = (Expression) con valor: " + e);
-    RESULT = e != null ? "(" + e + ")" : "ERROR"; //  Asegurar que nunca devuelva null
+    RESULT = e;
 :};
-
-
-
-
-
 
 s_write ::=
     WRITE OPEN_BRACKET write_param:wp CLOSE_BRACKET
     {:
         System.out.println("Write statement");
         System.out.println("Write parameter: " + wp);
+
+        IntermediateCodeGenerator.createTriplet(Operator.WRITE, wp);
     :};
 
 write_param ::=
@@ -301,6 +422,13 @@ s_read ::=
     {: 
         System.out.println("Read statement"); 
         System.out.println("Read parameter: " + rp);
+
+        SymbolEntry entry = SymbolTableManager.get(rp);
+        if (entry == null || !entry.isDeclared()) {
+            throw new UndefinedIdentifierException("La variable: " + rp + " no fue declarada");
+        }
+
+        IntermediateCodeGenerator.createTriplet(Operator.READ, entry.getName());
     :};
 read_param ::= 
     IDENTIFIER:id

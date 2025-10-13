@@ -30,6 +30,38 @@ import static lyc.compiler.constants.Constants.*;
   
   // Para manejar comentarios anidados
   private int commentDepth = 0;
+
+  // Indica si el siguiente '-' debe interpretarse como signo unario (permitir -123)
+  private boolean lastTokenAllowsUnary = true; // al inicio del archivo se permite unario
+
+  // Actualiza la bandera según el token emitido
+  private void updateUnaryFlagAfter(int tokenType) {
+    switch(tokenType) {
+      // tokens después de los cuales puede venir un signo unario
+      case ParserSym.ASSIG:
+      case ParserSym.OPEN_BRACKET:
+      case ParserSym.OPEN_CURLY_BRACKET:
+      case ParserSym.OPEN_SQUARE_BRACKET:
+      case ParserSym.COMMA:
+      case ParserSym.PLUS:
+      case ParserSym.MULT:
+      case ParserSym.DIV:
+      case ParserSym.MAYOR:
+      case ParserSym.LOWER:
+      case ParserSym.MAYOR_I:
+      case ParserSym.LOWER_I:
+      case ParserSym.EQUAL:
+      case ParserSym.NOT_EQUAL:
+      case ParserSym.AND_COND:
+      case ParserSym.OR_COND:
+      case ParserSym.NOT_COND:
+        lastTokenAllowsUnary = true;
+        break;
+      default:
+        // después de valores, identificadores o cierres, NO se espera unario
+        lastTokenAllowsUnary = false;
+    }
+  }
 %}
 
 LineTerminator = \r|\n|\r\n
@@ -67,6 +99,7 @@ Plus = "+"
 Mult = "*"
 Sub = "-"
 Div = "/"
+Mod = "%"
 Assig = ":="
 
 Mayor = ">"
@@ -157,81 +190,124 @@ StringConstant = \"(([^\"\n]*)\")
   /* Conditionals */
   {AndCond}  {
        System.out.println("Token AND_COND encontrado: " + yytext());
+       updateUnaryFlagAfter(ParserSym.AND_COND);
        return symbol(ParserSym.AND_COND);
    }
    {OrCond}  {
        System.out.println("Token OR_COND encontrado: " + yytext());
+       updateUnaryFlagAfter(ParserSym.OR_COND);
        return symbol(ParserSym.OR_COND);
    }
    {NotCond} {
        System.out.println("Token NOT_COND encontrado: " + yytext());
+       updateUnaryFlagAfter(ParserSym.NOT_COND);
        return symbol(ParserSym.NOT_COND);
    }
 
   /* Declaration */
-  {Init}                                    { return symbol(ParserSym.INIT); }
+  {Init}                                    { updateUnaryFlagAfter(ParserSym.INIT); return symbol(ParserSym.INIT); }
 
   /* Logical */
-  {If}                                     { return symbol(ParserSym.IF); }
-  {Else}                                   { return symbol(ParserSym.ELSE); }
-  {While}                                  { return symbol(ParserSym.WHILE); }
+  {If}                                     { updateUnaryFlagAfter(ParserSym.IF); return symbol(ParserSym.IF); }
+  {Else}                                   { updateUnaryFlagAfter(ParserSym.ELSE); return symbol(ParserSym.ELSE); }
+  {While}                                  { updateUnaryFlagAfter(ParserSym.WHILE); return symbol(ParserSym.WHILE); }
 
   /*Funciones especiales*/
-  {IsZero}                                 { return symbol(ParserSym.ISZERO); }
-  {DateConverted}                          { return symbol(ParserSym.DATECONVERTED); }
-  {ConvDate}                               { return symbol(ParserSym.CONVDATE); }
-  {Date}                                   { return symbol(ParserSym.DATE_LITERAL, yytext()); }
+  {IsZero}                                 { updateUnaryFlagAfter(ParserSym.ISZERO); return symbol(ParserSym.ISZERO); }
+  {DateConverted}                          { updateUnaryFlagAfter(ParserSym.DATECONVERTED); return symbol(ParserSym.DATECONVERTED); }
+  {ConvDate}                               { updateUnaryFlagAfter(ParserSym.CONVDATE); return symbol(ParserSym.CONVDATE); }
+  {Date}                                   { updateUnaryFlagAfter(ParserSym.DATE_LITERAL); return symbol(ParserSym.DATE_LITERAL, yytext()); }
 
 
   /* Data types */
-  {Int}                                     { return symbol(ParserSym.INT); }
-  {Float}                                   { return symbol(ParserSym.FLOAT); }
-  {String}                                  { return symbol(ParserSym.STRING); }
+  {Int}                                     { updateUnaryFlagAfter(ParserSym.INT); return symbol(ParserSym.INT); }
+  {Float}                                   { updateUnaryFlagAfter(ParserSym.FLOAT); return symbol(ParserSym.FLOAT); }
+  {String}                                  { updateUnaryFlagAfter(ParserSym.STRING); return symbol(ParserSym.STRING); }
 
   /* I/O */
-  {Write}                                  { return symbol(ParserSym.WRITE); }
-  {Read}                                   { return symbol(ParserSym.READ); }
+  {Write}                                  { updateUnaryFlagAfter(ParserSym.WRITE); return symbol(ParserSym.WRITE); }
+  {Read}                                   { updateUnaryFlagAfter(ParserSym.READ); return symbol(ParserSym.READ); }
 
 
   /* Identifiers */
-  {BooleanConstant}                         { return symbol(ParserSym.BOOLEAN_CONSTANT); }
+  {BooleanConstant}                         { updateUnaryFlagAfter(ParserSym.BOOLEAN_CONSTANT); return symbol(ParserSym.BOOLEAN_CONSTANT); }
   {Identifier}                             {
+                                              String id = yytext();
                                               if(yytext().length() > 15) {
-                                                  throw new InvalidLengthException("Identifier length not allowed: " + yytext());
+                                                  throw new InvalidLengthException("Identifier length not allowed: " + id);
                                               }
-                                              return symbol(ParserSym.IDENTIFIER, yytext());
+                                              // Insertar en tabla como ID (marca) para que el parser pueda validar uso/decl.
+                                              if (!SymbolTableManager.existsInTable(id)) {
+                                                SymbolEntry entry = new SymbolEntry(id, DataType.ID);
+                                                SymbolTableManager.insertInTable(entry);
+                                              }
+                                              updateUnaryFlagAfter(ParserSym.IDENTIFIER);
+                                              return symbol(ParserSym.IDENTIFIER, id);
                                           }
   /* Constants */
 
 
 
 {IntegerConstant}                        {
-                                                if(yytext().length() > 5 || Integer.valueOf(yytext()) > 65535) {
+                                                // validar como entero con signo de 16 bits
+                                                int value;
+                                                try {
+                                                  value = Integer.parseInt(yytext());
+                                                } catch (NumberFormatException ex) {
+                                                  throw new InvalidIntegerException("Integer out of range: " + yytext());
+                                                }
+                                                if (value < -32768 || value > 32767) {
                                                     throw new InvalidIntegerException("Integer out of range: " + yytext());
                                                 }
 
                                                 if(!SymbolTableManager.existsInTable(yytext())){
-                                                      SymbolEntry entry = new SymbolEntry("_"+yytext(), DataType.INTEGER_CONS, yytext());
+                                                      SymbolEntry entry = new SymbolEntry("_"+yytext(), DataType.INTEGER_TYPE, yytext());
                                                       SymbolTableManager.insertInTable(entry);
                                                 }
 
-                                                return symbol(ParserSym.INTEGER_CONSTANT, yytext());
+                                                updateUnaryFlagAfter(ParserSym.INTEGER_CONSTANT);
+                                                return symbol(ParserSym.INTEGER_CONSTANT, "_"+yytext());
                                             }
 
-  {FloatConstant}                           { 
-                                                String text = yytext();
-                                                float value = Float.parseFloat(text);
+  /* Regla para enteros negativos ligados ("-123") que solo se aceptan si vienen en contexto unario */
+  {Sub}{IntegerConstant} {
+      String txt = yytext(); // ejemplo: "-21"
+      if (lastTokenAllowsUnary) {
+          int value = Integer.parseInt(txt);
+          if (value < -32768 || value > 32767) {
+              throw new InvalidIntegerException("Integer out of range: " + txt);
+          }
+
+          if(!SymbolTableManager.existsInTable(txt)){
+                SymbolEntry entry = new SymbolEntry("_"+txt, DataType.INTEGER_TYPE, txt);
+                SymbolTableManager.insertInTable(entry);
+          }
+
+          updateUnaryFlagAfter(ParserSym.INTEGER_CONSTANT);
+          return symbol(ParserSym.INTEGER_CONSTANT, "_"+txt);
+      } else {
+          // No es ununario: devolver token SUB y "empujar" de vuelta el resto del texto (sin '-'),
+          // para que el siguiente escaneo detecte el número por separado.
+          yypushback(yytext().length() - 1);
+          updateUnaryFlagAfter(ParserSym.SUB);
+          return symbol(ParserSym.SUB);
+      }
+  }
+
+  {FloatConstant}                           {
+                                                float value = Float.parseFloat(yytext());
 
                                                 if (!Float.isFinite(value)) {
-                                                  throw new InvalidFloatException("Float out of range: " + text);
+                                                  throw new InvalidFloatException("Float out of range: " + yytext());
                                                 }
 
-                                                if (!SymbolTableManager.existsInTable(text)) {
-                                                    SymbolEntry entry = new SymbolEntry("_" + text, DataType.FLOAT_CONS, text);
+                                                if (!SymbolTableManager.existsInTable(yytext())) {
+                                                    SymbolEntry entry = new SymbolEntry("_"+yytext(), DataType.FLOAT_TYPE, yytext());
                                                     SymbolTableManager.insertInTable(entry);
                                                 }
 
-                                                return symbol(ParserSym.FLOAT_CONSTANT, text);
+                                                updateUnaryFlagAfter(ParserSym.FLOAT_CONSTANT);
+                                                return symbol(ParserSym.FLOAT_CONSTANT, "_"+yytext());
                                             }
 
 
@@ -244,44 +320,46 @@ StringConstant = \"(([^\"\n]*)\")
 
                                                 sb.replace(0,1,"");
                                                 sb.replace(sb.length()-1,sb.length(),""); //trim extra quotes
-
+                                              
                                                 if(!SymbolTableManager.existsInTable(yytext())){
-                                                      SymbolEntry entry = new SymbolEntry("_"+sb.toString(), DataType.STRING_CONS, sb.toString(), Integer.toString(sb.length()));
+                                                      SymbolEntry entry = new SymbolEntry("_"+sb.toString(), DataType.STRING_TYPE, sb.toString(), Integer.toString(sb.length()));
                                                       SymbolTableManager.insertInTable(entry);
                                                 }
 
-                                                return symbol(ParserSym.STRING_CONSTANT, yytext());
+                                                updateUnaryFlagAfter(ParserSym.STRING_CONSTANT);
+                                                return symbol(ParserSym.STRING_CONSTANT, "_"+sb.toString());
                                             }
   /*Declaration*/
-  {Init}                                    { return symbol(ParserSym.INIT); }
+  {Init}                                    { updateUnaryFlagAfter(ParserSym.INIT); return symbol(ParserSym.INIT); }
 
   /* Operators */
-  {Plus}                                    { return symbol(ParserSym.PLUS); }
-  {Sub}                                     { return symbol(ParserSym.SUB); }
-  {Mult}                                    { return symbol(ParserSym.MULT); }
-  {Div}                                     { return symbol(ParserSym.DIV); }
-  {Assig}                                   { return symbol(ParserSym.ASSIG); }
-  {OpenBracket}                             { return symbol(ParserSym.OPEN_BRACKET); }
-  {CloseBracket}                            { return symbol(ParserSym.CLOSE_BRACKET); }
-  {OpenCurlyBrace}                          { return symbol(ParserSym.OPEN_CURLY_BRACKET); }
-  {CloseCurlyBrace}                         { return symbol(ParserSym.CLOSE_CURLY_BRACKET); }
-  {OpenSquareBracket}                       { return symbol(ParserSym.OPEN_SQUARE_BRACKET); }
-  {CloseSquareBracket}                      { return symbol(ParserSym.CLOSE_SQUARE_BRACKET); }
+  {Plus}                                    { updateUnaryFlagAfter(ParserSym.PLUS); return symbol(ParserSym.PLUS); }
+  {Sub}                                     { updateUnaryFlagAfter(ParserSym.SUB); return symbol(ParserSym.SUB); }
+  {Mult}                                    { updateUnaryFlagAfter(ParserSym.MULT); return symbol(ParserSym.MULT); }
+  {Div}                                     { updateUnaryFlagAfter(ParserSym.DIV); return symbol(ParserSym.DIV); }
+  {Mod}                                     { updateUnaryFlagAfter(ParserSym.MOD); return symbol(ParserSym.MOD); }
+  {Assig}                                   { updateUnaryFlagAfter(ParserSym.ASSIG); return symbol(ParserSym.ASSIG); }
+  {OpenBracket}                             { updateUnaryFlagAfter(ParserSym.OPEN_BRACKET); return symbol(ParserSym.OPEN_BRACKET); }
+  {CloseBracket}                            { updateUnaryFlagAfter(ParserSym.CLOSE_BRACKET); return symbol(ParserSym.CLOSE_BRACKET); }
+  {OpenCurlyBrace}                          { updateUnaryFlagAfter(ParserSym.OPEN_CURLY_BRACKET); return symbol(ParserSym.OPEN_CURLY_BRACKET); }
+  {CloseCurlyBrace}                         { updateUnaryFlagAfter(ParserSym.CLOSE_CURLY_BRACKET); return symbol(ParserSym.CLOSE_CURLY_BRACKET); }
+  {OpenSquareBracket}                       { updateUnaryFlagAfter(ParserSym.OPEN_SQUARE_BRACKET); return symbol(ParserSym.OPEN_SQUARE_BRACKET); }
+  {CloseSquareBracket}                      { updateUnaryFlagAfter(ParserSym.CLOSE_SQUARE_BRACKET); return symbol(ParserSym.CLOSE_SQUARE_BRACKET); }
 
   /* Comparators */
-  {Mayor}                                  { return symbol(ParserSym.MAYOR); }
-  {Lower}                                  { return symbol(ParserSym.LOWER); }
-  {MayorI}                                 { return symbol(ParserSym.MAYOR_I); }
-  {LowerI}                                 { return symbol(ParserSym.LOWER_I); }
-  {Equal}                                  { return symbol(ParserSym.EQUAL); }
-  {NotEqual}                               { return symbol(ParserSym.NOT_EQUAL); }
+  {Mayor}                                  { updateUnaryFlagAfter(ParserSym.MAYOR); return symbol(ParserSym.MAYOR); }
+  {Lower}                                  { updateUnaryFlagAfter(ParserSym.LOWER); return symbol(ParserSym.LOWER); }
+  {MayorI}                                 { updateUnaryFlagAfter(ParserSym.MAYOR_I); return symbol(ParserSym.MAYOR_I); }
+  {LowerI}                                 { updateUnaryFlagAfter(ParserSym.LOWER_I); return symbol(ParserSym.LOWER_I); }
+  {Equal}                                  { updateUnaryFlagAfter(ParserSym.EQUAL); return symbol(ParserSym.EQUAL); }
+  {NotEqual}                               { updateUnaryFlagAfter(ParserSym.NOT_EQUAL); return symbol(ParserSym.NOT_EQUAL); }
 
   /* Misc */
 
-  {Comma}                                  { return symbol(ParserSym.COMMA); }
-  {SemiColon}                              { return symbol(ParserSym.SEMI_COLON); }
-  {Dot}                                    { return symbol(ParserSym.DOT); }
-  {DoubleDot}                              { return symbol(ParserSym.DOUBLE_DOT); }
+  {Comma}                                  { updateUnaryFlagAfter(ParserSym.COMMA); return symbol(ParserSym.COMMA); }
+  {SemiColon}                              { updateUnaryFlagAfter(ParserSym.SEMI_COLON); return symbol(ParserSym.SEMI_COLON); }
+  {Dot}                                    { updateUnaryFlagAfter(ParserSym.DOT); return symbol(ParserSym.DOT); }
+  {DoubleDot}                              { updateUnaryFlagAfter(ParserSym.DOUBLE_DOT); return symbol(ParserSym.DOUBLE_DOT); }
 
     /* whitespace */
     {WhiteSpace}                   { /* ignore */ }
@@ -291,6 +369,3 @@ StringConstant = \"(([^\"\n]*)\")
 
 
 }
-
-
-

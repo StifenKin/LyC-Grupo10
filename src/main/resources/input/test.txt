@@ -1,111 +1,172 @@
-#+--------------------- Comentario de una línea ---------------------+#
-
-#+--------------------- Comentario --------------------- 
-    de varias 
-    lineas
-+#
-
-#+--------------------- Comentario anidado --------------------- 
-    #+--------------------- Nivel 1 ---------------------+#
-+#
-
+#+---------------------- ARCHIVO DE PRUEBA SEGUNDA ENTREGA ----------------------+#
 
 #+--------------------- Declaracion de variables ---------------------+#
-
 init {
-    a1, b1 : Float
-    variable1 : Int
-    p1, p2, p3 : String
+    a, c, d : Float
+    variable1, contador : Int
+    b, base, mensaje : String
+    fechaConv : String
 }
 
-#+--------------------- Funcion WRITE ---------------------+#
+#+--- ERROR: Variable ya declarada ---+#
+#+ init { a : Int }  -- Error: 'a' ya fue declarada como Float +#
 
-write("ewr")  #+ "ewr" es una cte string +#
-write(var1)  #+ var1 es una variable numérica definida previamente +#
+#+--- ERROR: Identificador muy largo (mas de 15 caracteres) ---+#
+#+ identificadorMuyLargoQueExcedeLimite := 5  -- Error: longitud excesiva +#
 
+#+--- ERROR: Variable repetida en misma declaracion ---+#
+#+ init { x, y, x : Int }  -- Error: 'x' repetido en la declaracion +#
 
 #+--------------------- Funcion READ ---------------------+#
+read(base)
+read(variable1)
 
-read(base) #+ base es una variable +#
+#+--- ERROR: Variable no declarada en READ ---+#
+#+ read(noExiste)  -- Error: variable 'noExiste' no fue declarada +#
+
+#+--------------------- Funcion WRITE ---------------------+#
+write("Mensaje de prueba")
+write(base)
+write(mensaje)
 
 #+--------------------- Asignaciones ---------------------+#
-
+#+--- Asignaciones validas con constantes numericas ---+#
 a := 99999.99
 a := 99.
 a := .9999
-a := 99
+a := 32767
 
+#+--- Asignacion con entero negativo ---+#
+variable1 := -32768
+
+#+--- ERROR: Constante entera fuera de rango (16 bits signed) ---+#
+#+ variable1 := 65536  -- Error: excede rango -32768..32767 +#
+#+ variable1 := -32769  -- Error: por debajo del rango minimo +#
+
+#+--- Asignaciones de strings ---+#
 b := "@sdADaSjfla%dfg"
-b := "asldk  fh sjf"
+mensaje := "Texto de prueba con espacios"
 
-#+--------------------- Aritmetica ---------------------+#
+#+--- ERROR: String muy largo (mas de 50 caracteres) ---+#
+#+ b := "Este string es demasiado largo y excede el limite de cincuenta caracteres permitidos"  -- Error: longitud excesiva +#
 
-c := -(5+a)
-c := d*(e-21)
+#+--- ERROR: Tipos incompatibles en asignacion ---+#
+#+ variable1 := "texto"  -- Error: no se puede asignar String a Int +#
+#+ b := 123  -- Error: no se puede asignar Int a String +#
 
+#+--------------------- Expresiones Aritmeticas ---------------------+#
+#+--- Operaciones basicas ---+#
+c := a + 5.5
+d := variable1 * 2
+a := d / 3.0
+variable1 := contador - 10
 
+#+--- Expresiones complejas ---+#
+c := -(5.5 + a)
+d := (a + variable1) * (c - 2.5)
+a := variable1 + c * d / 2.0
 
-#+--------------------- Comparaciones ---------------------+#
+#+--- Operador unario ---+#
+c := -a
+variable1 := -contador
 
-if (NOT a > b)
-{
-    write("a no es mas grande que b")
+#+--- ERROR: Tipos incompatibles en operaciones ---+#
+#+ c := a + "texto"  -- Error: no se puede sumar Float + String +#
+#+ variable1 := -b  -- Error: operador unario en String +#
+
+#+--------------------- Estructuras de Control ---------------------+#
+#+--- Condicionales simples ---+#
+if (variable1 > 0) {
+    write("Positivo")
 }
 
-if (a > b OR c > b)
-{
-    write("a es mas grande que b o c es mas grande que b")
+if (a >= 10.5) {
+    variable1 := variable1 + 1
+} else {
+    variable1 := variable1 - 1
 }
 
-if (a > b AND c > b)
-{
-    write("a es mas grande que b y c es mas grande que b")
+#+--- Condiciones complejas ---+#
+if (a > 0.0 AND variable1 < 100) {
+    write("Condicion AND")
 }
 
-if (a > b)
-{
-    write("a es mas grande que b y c es mas grande que b")
+if (a <= 5.0 OR contador >= 10) {
+    write("Condicion OR")
 }
 
-
-
-#+--------------------- If -Else ---------------------+#
-if (a > b)
-{
-    write("a es mas grande que b")
-}
-else
-{
-    write("a es mas chico o igual a b")
+if (NOT (variable1 == 0)) {
+    write("Condicion NOT")
 }
 
-#+--------------------- If -Else anidados ---------------------+#
-
-if (a == b)
-{
-    if (b != c) {}
-}
-else
-{
-    if(a != c){}
-
-    else{}
+#+--- Ciclos ---+#
+while (contador < 10) {
+    contador := contador + 1
+    write("Iteracion")
 }
 
-
-#+--------------------- isZero ---------------------+#
-
-if (isZero( contador - 10))
-{
-    
+#+--- Ciclos anidados ---+#
+while (variable1 > 0) {
+    if (variable1 % 2 == 0) {
+        variable1 := variable1 / 2
+    } else {
+        variable1 := variable1 * 3 + 1
+    }
 }
-while (isZero( s*7+1-h/2 ))
-{
 
+#+--- ERROR: Variable no declarada en condicion ---+#
+#+ if (noDeclarada > 5) { write("error") }  -- Error: 'noDeclarada' no existe +#
+
+#+--------------------- Funciones Especiales ---------------------+#
+#+--- isZero ---+#
+if (isZero(variable1)) {
+    write("Variable es cero")
 }
-#+--------------------- convDate ---------------------+#
 
+if (isZero(a - 5.0)) {
+    write("Expresion es cero")
+}
+
+#+--- convDate ---+#
+fechaConv := convDate(15-03-2024)
+fechaConv := convDate(01-12-2023)
+
+#+--- ERROR: Fecha invalida ---+#
+#+ fechaConv := convDate(32-13-2024)  -- Error: dia/mes invalidos +#
+#+ fechaConv := convDate(29-02-2023)  -- Error: ano no bisiesto +#
+
+#+--------------------- Comentarios Anidados ---------------------+#
+#+
+    Comentario nivel 1
+    #+
+        Comentario anidado nivel 2
+    +#
+    Fin comentario nivel 1
++#
+
+#+--- ERROR: Comentario anidado a mas de 2 niveles ---+#
+#+ Ejemplo: Tres niveles de comentarios anidados causarian error +#
+
+#+--- ERROR: Comentario sin cerrar ---+#
+#+ Ejemplo: Un comentario que empieza con hash-plus pero no tiene plus-hash al final +#
+
+#+--------------------- Casos Limite y Validaciones ---------------------+#
+#+--- Constantes en los limites ---+#
+variable1 := 32767    #+ maximo Int 16 bits +#
+variable1 := -32768   #+ minimo Int 16 bits +#
+
+#+--- Float validos ---+#
+a := 3.14159
+a := 0.001
+a := 1000000.0
+
+#+--- Identificadores en el limite (15 caracteres) ---+#
 init {
-    dateC, anotherDateC : DateConverted
+    identificador15 : Int
 }
-dateC := convDate(21-08-2025)
+identificador15 := 42
+
+#+--- String en el limite (50 caracteres) ---+#
+mensaje := "Este mensaje tiene exactamente cincuenta caracters"
+
+#+--------------------- Fin del Archivo de Prueba ---------------------+#

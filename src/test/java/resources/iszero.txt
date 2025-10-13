@@ -1,4 +1,12 @@
-isZero( 2*7+1-5/2 )
+init {
+    contador : Int
+}
+
+if (isZero(2*7+1-5/2)) {
+    write("La expresion es cero")
+}
 
 contador := 10
-isZero( contador - 10 )
+if (isZero(contador - 10)) {
+    write("contador - 10 es cero")
+}

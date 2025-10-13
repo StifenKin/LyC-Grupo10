@@ -1,1 +1,6 @@
-convDate(21-08-2025)
+init {
+    fechaConvertida : String
+}
+
+fechaConvertida := convDate(21-08-2025)
+

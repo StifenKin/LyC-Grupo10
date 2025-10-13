@@ -14,7 +14,7 @@ public class SymbolTableGenerator implements FileGenerator {
                                    "VALUE", "LENGTH"));
 
     for (Map.Entry<String, SymbolEntry> e :
-         SymbolTableManager.symbolTable.entrySet()) {
+         SymbolTableManager.getSymbolTable().entrySet()) {
       String lexeme = e.getKey();
       SymbolEntry entry = e.getValue();
 
