@@ -1,1 +1,6 @@
-read(base) #+ base es una variable +#
+init {
+    base : String
+}
+
+read(base)
+

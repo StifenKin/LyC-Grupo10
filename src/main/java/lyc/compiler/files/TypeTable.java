@@ -21,12 +21,27 @@ public class TypeTable {
     case SUB:
     case MUL:
     case DIV:
-      // Solo números: int y float
+    case MOD:
+      // Solo números: int y float (MOD típicamente solo con enteros, pero permitimos flexibilidad)
       return t1.isNumeric() && t2.isNumeric();
     case NEG:
       // unario → solo uno debe ser numérico
       return t1 != null && t1.isNumeric();
-
+    case ASSIGN:
+      // Para asignaciones: mismo tipo o conversión implícita permitida
+      if (t1 == t2) return true;
+      // Int se puede asignar a Float (conversión implícita)
+      if (t1 == DataType.FLOAT_TYPE && t2 == DataType.INTEGER_TYPE) return true;
+      return false;
+    case LT:
+    case GT:
+    case EQ:
+    case NEQ:
+    case LTEQ:
+    case GTEQ:
+      // Comparaciones: mismo tipo o ambos numéricos
+      if (t1 == t2) return true;
+      return t1.isNumeric() && t2.isNumeric();
     default:
       return false;
     }
@@ -44,12 +59,34 @@ public class TypeTable {
         return DataType.FLOAT_TYPE;
       return DataType.INTEGER_TYPE;
 
+    case MOD:
+      // Módulo típicamente devuelve entero, pero si hay float involucrado, devolvemos float
+      if (t1 == DataType.FLOAT_TYPE || t2 == DataType.FLOAT_TYPE)
+        return DataType.FLOAT_TYPE;
+      return DataType.INTEGER_TYPE;
+
     case NEG:
       return t1;
+
+    case ASSIGN:
+      return t1; // El tipo destino
+
+    case LT:
+    case GT:
+    case EQ:
+    case NEQ:
+    case LTEQ:
+    case GTEQ:
+      // Las comparaciones devuelven boolean (pero no lo tenemos definido, usaremos INT)
+      return DataType.INTEGER_TYPE;
 
     default:
       // Si no se define, devolvemos null o lanzamos excepción
       throw new IllegalArgumentException("Tipo no definido para " + op);
     }
+  }
+
+  public static void reset() {
+    typeMap.clear();
   }
 }

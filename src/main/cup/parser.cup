@@ -26,6 +26,7 @@ terminal PLUS;
 terminal SUB;
 terminal MULT;
 terminal DIV;
+terminal MOD;
 terminal REST;
 terminal MAYOR;
 terminal LOWER;
@@ -191,6 +192,9 @@ condition ::= comparison AND_COND comparison {: System.out.println("And conditio
 condition ::= comparison OR_COND comparison {: System.out.println("Or condition"); :};
 condition ::= comparison {: System.out.println("Condition = Comparison"); :};
 condition ::= NOT_COND comparison {: System.out.println("Not condition"); :};
+condition ::= NOT_COND OPEN_BRACKET condition CLOSE_BRACKET {: System.out.println("Not condition with parentheses"); :};
+condition ::= OPEN_BRACKET condition CLOSE_BRACKET {: System.out.println("Parenthesized condition"); :};
+
 comparison ::= expression:e1 comparator:c expression:e2 {:
     System.out.println("Comparison detected: " + e1 + " " + c + " " + e2);
     RESULT = "(" + e1 + " " + c + " " + e2 + ")";
@@ -332,6 +336,24 @@ term ::= term:tt DIV factor:ff {:
     DataType rType = TypeTable.resultType(t1, t2, Operator.DIV);
 
     int idx = IntermediateCodeGenerator.createTriplet(Operator.DIV, tt, ff).getIndex();
+    RESULT = idx;
+    TypeTable.putType(idx, rType);
+:};
+
+term ::= term:tt MOD factor:ff {:
+    System.out.println("Módulo detectada: " + tt + " % " + ff);
+
+    DataType t1 = TypeTable.getType(tt);
+    DataType t2 = TypeTable.getType(ff);
+
+    if (!TypeTable.areCompatible(t1, t2, Operator.MOD)) {
+        throw new TypeMismatchException(
+            "Tipos incompatibles para %: " + t1 + " y " + t2
+        );
+    }
+    DataType rType = TypeTable.resultType(t1, t2, Operator.MOD);
+
+    int idx = IntermediateCodeGenerator.createTriplet(Operator.MOD, tt, ff).getIndex();
     RESULT = idx;
     TypeTable.putType(idx, rType);
 :};

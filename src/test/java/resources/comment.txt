@@ -1,2 +1,6 @@
-a:= 1
+init {
+    a : Int
+}
+
+a := 1
 #+ Esto es un comentario +#

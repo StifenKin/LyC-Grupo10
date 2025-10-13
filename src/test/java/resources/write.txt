@@ -1,2 +1,6 @@
-write(ewr)  #+ ewr es una cte string +#
-write(var1)  #+ var1 es una variable numerica definida previamente +#
+init {
+    var1 : Int
+}
+
+write("Hello World")
+write(var1)

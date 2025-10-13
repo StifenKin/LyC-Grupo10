@@ -1,4 +1,7 @@
-if (a > b)
-{
+init {
+    a, b : Int
+}
+
+if (a > b) {
     write("a es mas grande que b")
 }

@@ -1,8 +1,11 @@
+init {
+    a, b, c : Int
+}
+
 a := 1
 b := 1
 c := 2
 
-if (NOT a > b)
-{
+if (NOT a > b) {
     write("a no es mas grande que b")
 }

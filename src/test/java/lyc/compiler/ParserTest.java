@@ -2,6 +2,12 @@ package lyc.compiler;
 
 import java_cup.runtime.Symbol;
 import lyc.compiler.factories.ParserFactory;
+import lyc.compiler.table.SymbolTableManager;
+import lyc.compiler.files.IntermediateCodeGenerator;
+import lyc.compiler.files.TypeTable;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -12,12 +18,27 @@ import java.nio.file.Files;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-// @Disabled
 public class ParserTest {
+
+    @BeforeEach
+    void setUp() {
+        // Limpiar tablas antes de cada test
+        SymbolTableManager.getSymbolTable().clear();
+        IntermediateCodeGenerator.reset();
+        TypeTable.reset();
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Limpiar tablas despues de cada test
+        SymbolTableManager.getSymbolTable().clear();
+        IntermediateCodeGenerator.reset();
+        TypeTable.reset();
+    }
 
     @Test
     public void assignmentWithExpression() throws Exception {
-        compilationSuccessful("c:=d*(e-21)/4");
+        compilationSuccessful("init { c, d, e : Float } c:=d*(e-21)/4");
     }
 
     @Test
