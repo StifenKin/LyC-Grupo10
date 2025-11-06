@@ -19,12 +19,22 @@ public enum Operator {
   DECLARE("DECLARE"),
 
   // --- Comparaciones ---
+  CMP("CMP"),
   LT("<"),
   GT(">"),
   EQ("=="),
   NEQ("!="),
   LTEQ("<="),
   GTEQ(">="),
+
+  // --- Saltos condicionales ---
+  BLT("BLT"),    // Branch if Less Than
+  BGE("BGE"),    // Branch if Greater or Equal
+  BLE("BLE"),    // Branch if Less or Equal
+  BGT("BGT"),    // Branch if Greater Than
+  BEQ("BEQ"),    // Branch if Equal
+  BNE("BNE"),    // Branch if Not Equal
+  BI("BI"),      // Branch Inconditional
 
   // --- Lógicos ---
   AND("AND"),
@@ -39,6 +49,7 @@ public enum Operator {
   ENDWHILE("ENDWHILE"),
   BEGIN("BEGIN"),
   END("END"),
+  LABEL("LABEL"),
 
   // --- I/O ---
   READ("READ"),
