@@ -268,6 +268,33 @@ condition ::= OPEN_BRACKET condition:cond CLOSE_BRACKET {:
 comparison ::= expression:e1 comparator:c expression:e2 {:
     System.out.println("Comparison detected: " + e1 + " " + c + " " + e2);
 
+    // Validar que los tipos sean compatibles para comparación
+    DataType type1 = TypeTable.getType(e1);
+    DataType type2 = TypeTable.getType(e2);
+
+    // Verificar que ambos tipos sean comparables
+    if (type1 == null || type2 == null) {
+        throw new TypeMismatchException("No se puede determinar el tipo de uno de los operandos en la comparacion");
+    }
+
+    // Validar que sean del mismo tipo o tipos compatibles (numéricos entre sí)
+    boolean compatibles = false;
+
+    if (type1 == type2) {
+        // Mismo tipo exacto
+        compatibles = true;
+    } else if (type1.isNumeric() && type2.isNumeric()) {
+        // Ambos son numéricos (Int y Float son compatibles en comparaciones)
+        compatibles = true;
+    }
+
+    if (!compatibles) {
+        throw new TypeMismatchException(
+            "Tipos incompatibles en comparacion: no se puede comparar " +
+            type1.getName() + " " + c + " " + type2.getName()
+        );
+    }
+
     // Generar los tercetos: CMP y salto negado con un placeholder
     // Retornar el índice del terceto de salto para que condition lo actualice
     int jumpIdx = IntermediateCodeGenerator.createComparison(e1, e2, c, "PLACEHOLDER");
