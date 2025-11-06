@@ -8,6 +8,7 @@ import java.util.Map;
 import lyc.compiler.table.*;
 import lyc.compiler.files.IntermediateCodeGenerator;
 import lyc.compiler.files.Operator;
+import lyc.compiler.files.Triplet;
 import lyc.compiler.files.TypeTable;
 import java.util.HashMap;
 import lyc.compiler.model.*;
@@ -17,6 +18,8 @@ class Parser;
 
 action code {:
     Set<String> idList = new HashSet<>();
+    String whileStartLabel = null;
+    String ifEndLabel = null;
 :}
 
 
@@ -76,9 +79,9 @@ non terminal DataType data_type;
 non terminal id_list;
 non terminal id_item;
 non terminal decision;
-non terminal condition;
-non terminal comparison;
-non terminal comparator;
+non terminal String condition;
+non terminal Integer comparison;
+non terminal String comparator;
 non terminal iterator;
 non terminal assignment;
 non terminal s_write;
@@ -88,7 +91,7 @@ non terminal String read_param;
 non terminal Integer expression;
 non terminal Integer term;
 non terminal Integer factor;
-non terminal is_zero;
+non terminal Integer is_zero;
 non terminal conv_date;
 non terminal c_list;
 non terminal list;
@@ -97,6 +100,7 @@ non terminal if_head;
 non terminal else_head;
 non terminal opt_block;
 non terminal it_head;
+non terminal String it_start;
 non terminal var_body;
 
 
@@ -154,7 +158,7 @@ data_type ::=
             :}
             | DATECONVERTED {:
                 System.out.println("DateConverted data type");
-                RESULT = DataType.STRING_TYPE; 
+                RESULT = DataType.STRING_TYPE;
             :};
 
 id_list ::=
@@ -182,22 +186,93 @@ if_head ::= IF {: System.out.println("If statement"); :};
 
 else_head ::= ELSE {: System.out.println("Else branch"); :};
 
-decision ::= if_head OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET;
-decision ::= if_head OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET 
-                else_head OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET;
+decision ::= if_head OPEN_BRACKET condition:endLabel CLOSE_BRACKET OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET {:
+    // Crear label de fin del if
+    IntermediateCodeGenerator.createLabel(endLabel);
+:};
+
+decision ::= if_head OPEN_BRACKET condition:elseLabel CLOSE_BRACKET OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET
+                else_head {:
+    // Salto incondicional al final después del then
+    ifEndLabel = IntermediateCodeGenerator.generateLabel();
+    IntermediateCodeGenerator.createTriplet(Operator.BI, ifEndLabel, (String)null);
+    // Label del else
+    IntermediateCodeGenerator.createLabel(elseLabel);
+:} OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET {:
+    // Label de fin
+    IntermediateCodeGenerator.createLabel(ifEndLabel);
+:};
 
 
-condition ::= is_zero;
-condition ::= comparison AND_COND comparison {: System.out.println("And condition"); :};
-condition ::= comparison OR_COND comparison {: System.out.println("Or condition"); :};
-condition ::= comparison {: System.out.println("Condition = Comparison"); :};
-condition ::= NOT_COND comparison {: System.out.println("Not condition"); :};
-condition ::= NOT_COND OPEN_BRACKET condition CLOSE_BRACKET {: System.out.println("Not condition with parentheses"); :};
-condition ::= OPEN_BRACKET condition CLOSE_BRACKET {: System.out.println("Parenthesized condition"); :};
+condition ::= is_zero:jumpIdx {:
+    // isZero retorna el índice del terceto de salto, igual que comparison
+    String targetLabel = IntermediateCodeGenerator.generateLabel();
+    IntermediateCodeGenerator.updateJumpTarget(jumpIdx, targetLabel);
+    RESULT = targetLabel;
+:};
+
+condition ::= comparison:cmp1 AND_COND comparison:cmp2 {:
+    System.out.println("And condition");
+    // Para AND: ambas comparaciones deben saltar al mismo label de salida
+    String targetLabel = IntermediateCodeGenerator.generateLabel();
+    // Actualizar ambos saltos para que apunten al mismo label
+    IntermediateCodeGenerator.updateJumpTarget(cmp1, targetLabel);
+    IntermediateCodeGenerator.updateJumpTarget(cmp2, targetLabel);
+    RESULT = targetLabel;
+:};
+
+condition ::= comparison:cmp1 OR_COND comparison:cmp2 {:
+    System.out.println("Or condition");
+    // Para OR: la primera salta a evaluar la segunda si es falsa
+    // La segunda salta al label de salida si es falsa
+    String targetLabel = IntermediateCodeGenerator.generateLabel();
+    String nextCheckLabel = IntermediateCodeGenerator.generateLabel();
+
+    // La primera comparación salta a la segunda comparación si es falsa
+    IntermediateCodeGenerator.updateJumpTarget(cmp1, nextCheckLabel);
+    // Crear el label para la segunda comparación
+    IntermediateCodeGenerator.createLabel(nextCheckLabel);
+    // La segunda comparación salta al label de salida si es falsa
+    IntermediateCodeGenerator.updateJumpTarget(cmp2, targetLabel);
+
+    RESULT = targetLabel;
+:};
+
+condition ::= comparison:jumpIdx {:
+    System.out.println("Condition = Comparison");
+    // Generar un label de salida y actualizar el salto
+    String targetLabel = IntermediateCodeGenerator.generateLabel();
+    IntermediateCodeGenerator.updateJumpTarget(jumpIdx, targetLabel);
+    RESULT = targetLabel;
+:};
+
+condition ::= NOT_COND comparison:cmp {:
+    System.out.println("Not condition");
+    // Para NOT: necesitamos invertir la lógica
+    // Ya usamos saltos negados, así que NOT invierte nuevamente
+    String targetLabel = IntermediateCodeGenerator.generateLabel();
+    IntermediateCodeGenerator.updateJumpTarget(cmp, targetLabel);
+    RESULT = targetLabel;
+:};
+
+condition ::= NOT_COND OPEN_BRACKET condition:cond CLOSE_BRACKET {:
+    System.out.println("Not condition with parentheses");
+    RESULT = cond;
+:};
+
+condition ::= OPEN_BRACKET condition:cond CLOSE_BRACKET {:
+    System.out.println("Parenthesized condition");
+    RESULT = cond;
+:};
 
 comparison ::= expression:e1 comparator:c expression:e2 {:
     System.out.println("Comparison detected: " + e1 + " " + c + " " + e2);
-    RESULT = "(" + e1 + " " + c + " " + e2 + ")";
+
+    // Generar los tercetos: CMP y salto negado con un placeholder
+    // Retornar el índice del terceto de salto para que condition lo actualice
+    int jumpIdx = IntermediateCodeGenerator.createComparison(e1, e2, c, "PLACEHOLDER");
+
+    RESULT = jumpIdx;
 :};
 
 
@@ -212,7 +287,18 @@ comparator ::= MAYOR {: RESULT = ">"; :}
 
 
 it_head ::= WHILE {: System.out.println("While statement"); :};
-iterator ::= it_head OPEN_BRACKET condition CLOSE_BRACKET OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET ;
+
+iterator ::= it_head {:
+    // Crear label de inicio del while
+    whileStartLabel = IntermediateCodeGenerator.generateLabel();
+    IntermediateCodeGenerator.createLabel(whileStartLabel);
+:} OPEN_BRACKET condition:endLabel CLOSE_BRACKET OPEN_CURLY_BRACKET opt_block CLOSE_CURLY_BRACKET {:
+    // Salto incondicional al inicio
+    IntermediateCodeGenerator.createTriplet(Operator.BI, whileStartLabel, (String)null);
+    // Label de salida
+    IntermediateCodeGenerator.createLabel(endLabel);
+:};
+
 
 assignment ::=
     IDENTIFIER:id ASSIG expression:e
@@ -438,29 +524,68 @@ read_param ::=
 //isZero
 
 is_zero ::= ISZERO OPEN_BRACKET expression:e CLOSE_BRACKET
-              {: System.out.println("Condition = isZero(" + e + ")"); :};
+              {:
+                System.out.println("Condition = isZero(" + e + ")");
+
+                // isZero(expr) es equivalente a expr == 0
+                // Generar terceto con la constante 0
+                int zeroIdx = IntermediateCodeGenerator.createTriplet(Operator.CTE, "_0").getIndex();
+                TypeTable.putType(zeroIdx, TypeTable.getType(e)); // Mismo tipo que la expresión
+
+                // Generar CMP comparando la expresión con 0
+                IntermediateCodeGenerator.createTriplet(Operator.CMP, e, zeroIdx);
+
+                // Generar salto complementario (BNE para ==)
+                // Si expr != 0 (negación de ==), salta al label
+                Triplet jumpTriplet = IntermediateCodeGenerator.createTriplet(Operator.BNE, "PLACEHOLDER", (String)null);
+
+                RESULT = jumpTriplet.getIndex();
+              :};
 
 
 //convDate
 conv_date ::= CONVDATE OPEN_BRACKET DATE_LITERAL:date CLOSE_BRACKET
 {:
-    String raw = (String)date;   
+    System.out.println("convDate detected: " + date);
+
+    String raw = (String)date;
     String[] parts = raw.split("-");
 
     if (parts.length != 3) {
-        throw new InvalidDateFormat("Formato de fecha inválido: " + raw);
+        throw new InvalidDateFormat("Formato de fecha invalido: " + raw);
     }
 
+    // Parsear los componentes de la fecha
     int d = Integer.parseInt(parts[0]);
     int m = Integer.parseInt(parts[1]);
     int y = Integer.parseInt(parts[2]);
 
+    // Validar que la fecha sea valida
     try {
         java.time.LocalDate.of(y, m, d);
     } catch (java.time.DateTimeException ex) {
         throw new InvalidDateFormat("Fecha no valida: " + raw);
     } 
 
+    // Generar tercetos para los componentes de la fecha (día, mes, año)
+    int dayIdx = IntermediateCodeGenerator.createTriplet(Operator.CTE, "_" + d).getIndex();
+    TypeTable.putType(dayIdx, DataType.INTEGER_TYPE);
+
+    int monthIdx = IntermediateCodeGenerator.createTriplet(Operator.CTE, "_" + m).getIndex();
+    TypeTable.putType(monthIdx, DataType.INTEGER_TYPE);
+
+    int yearIdx = IntermediateCodeGenerator.createTriplet(Operator.CTE, "_" + y).getIndex();
+    TypeTable.putType(yearIdx, DataType.INTEGER_TYPE);
+
+    // Generar el valor convertido (formato YYYYMMDD)
     String yyyymmdd = String.format("%04d%02d%02d", y, m, d);
+
+    // Crear un terceto especial para la conversión de fecha
+    // Este terceto representa la operación CONVDATE con los tres componentes
+    int convDateIdx = IntermediateCodeGenerator.createTriplet(Operator.CTE, "_" + yyyymmdd).getIndex();
+    TypeTable.putType(convDateIdx, DataType.DATECONVERTED_TYPE);
+
+    System.out.println("Fecha convertida: " + yyyymmdd + " (dia=" + d + ", mes=" + m + ", anio=" + y + ")");
+
     RESULT = yyyymmdd;
 :};

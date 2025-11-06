@@ -5,7 +5,7 @@ init {
     a, c, d : Float
     variable1, contador : Int
     b, base, mensaje : String
-    fechaConv : String
+    fechaConv : DateConverted
 }
 
 #+--- ERROR: Variable ya declarada ---+#
