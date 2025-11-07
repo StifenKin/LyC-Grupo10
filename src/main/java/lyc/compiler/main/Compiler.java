@@ -5,6 +5,7 @@ import java.io.Reader;
 import lyc.compiler.Parser;
 import lyc.compiler.factories.FileFactory;
 import lyc.compiler.factories.ParserFactory;
+import lyc.compiler.files.AsmCodeGenerator;
 import lyc.compiler.files.FileOutputWriter;
 import lyc.compiler.files.IntermediateCodeGenerator;
 import lyc.compiler.files.IntermediateCodeFileGenerator;
@@ -30,13 +31,15 @@ public final class Compiler {
       Parser parser = ParserFactory.create(reader);
       parser.parse();
 
-      // Generar los archivos requeridos para la segunda entrega
+      // Generar los archivos requeridos
       FileOutputWriter.writeOutput("symbol-table.txt", new SymbolTableGenerator());
       FileOutputWriter.writeOutput("intermediate-code.txt", new IntermediateCodeFileGenerator());
+      FileOutputWriter.writeOutput("final.asm", new AsmCodeGenerator());
 
       System.out.println("Archivos generados:");
       System.out.println("- symbol-table.txt: Tabla de símbolos");
       System.out.println("- intermediate-code.txt: Código intermedio (tercetos)");
+      System.out.println("- final.asm: Código ensamblador MASM");
 
     } catch (IOException e) {
       System.err.println("There was an error trying to read input file " + e.getMessage());
