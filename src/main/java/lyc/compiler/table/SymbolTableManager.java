@@ -11,6 +11,11 @@ public class SymbolTableManager {
   }
 
   public static void insertInTable(SymbolEntry entry) {
+    // Validar que el nombre no sea nulo ni vacío
+    if (entry == null || entry.getName() == null || entry.getName().trim().isEmpty()) {
+      System.out.println("Warning: Attempting to insert symbol with null or empty name - ignored");
+      return;
+    }
     symbolTable.put(entry.getName().replace(" ", "_"), entry);
   }
 
