@@ -464,9 +464,21 @@ public class AsmCodeGenerator implements FileGenerator {
         // sanitizamos el nombre para que sea un identificador ASM válido y declaramos
         // el dato correspondiente (DD para números, DB para strings).
         if (cleanVal.startsWith("_")) {
-            String raw = cleanVal.substring(1);
-            // Reemplazos específicos legibles
-            String sanitizedCore = raw.replace(".", "_DOT_")
+            // nombre original (sin prefijo '_') usado para generar el identificador ASM
+            String originalNameCore = cleanVal.substring(1);
+
+            // Intentar obtener el valor real desde la tabla de símbolos
+            // SymbolTableManager.insertInTable reemplaza espacios por '_', normalizar clave igual
+            String lookupKey = cleanVal.replace(" ", "_");
+            SymbolEntry entry = SymbolTableManager.getSymbolTable().get(lookupKey);
+            String rawValueFromTable = null;
+            if (entry != null && entry.getValue() != null && !"-".equals(entry.getValue())) {
+                rawValueFromTable = entry.getValue();
+            }
+
+            // sanitizedCore se genera a partir del nombre original (no del valor),
+            // para mantener coherencia entre el identificador en la tabla y en el ASM.
+            String sanitizedCore = originalNameCore.replace(".", "_DOT_")
                                       .replace("-", "_NEG_")
                                       .replace("%", "_PCT_")
                                       .replace("@", "_AT_")
@@ -476,12 +488,18 @@ public class AsmCodeGenerator implements FileGenerator {
             String name = "_" + sanitizedCore;
 
             if (!declaredTemps.containsKey(name)) {
-                if (esNumero(raw)) {
-                    String number = normalizeNumberLiteral(raw);
+                // Decidir el contenido a declarar: preferir el valor en la tabla de símbolos si existe,
+                // en caso contrario usar el texto extraído del nombre (originalNameCore).
+                String contentForCheck = rawValueFromTable != null ? rawValueFromTable : originalNameCore;
+
+                if (esNumero(contentForCheck)) {
+                    String number = normalizeNumberLiteral(contentForCheck);
                     appendDataDeclaration(name + " DD " + number);
                 } else {
-                    // string literal: aseguramos que no tenga comillas internas problematicas ni newlines
-                    String s = raw.replace("\"", "'").replace("\r", " ").replace("\n", " ");
+                    // string literal: si usamos el valor de la tabla, ese es el contenido real;
+                    // si no, usamos originalNameCore como contenido (fallback).
+                    String s = (rawValueFromTable != null ? rawValueFromTable : originalNameCore)
+                                .replace("\"", "'").replace("\r", " ").replace("\n", " ");
                     appendDataDeclaration(name + " DB \"" + s + "\", 0");
                 }
                 declaredTemps.put(name, true);
